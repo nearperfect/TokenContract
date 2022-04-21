@@ -85,32 +85,32 @@ contract RoleAccess is AccessControlEnumerable {
   // A few helper functions:
 
   // assign minter role to another EOA or smart contract
-  function grantMinter(address minter) public onlyAdmin returns (bool) {
+  function grantMinter(address minter) external onlyAdmin returns (bool) {
     grantRole(MINTER_ROLE, minter);
     return true;
   }
 
   // revoke minter role to another EOA or smart contract
-  function revokeMinter(address minter) public onlyAdmin returns (bool) {
+  function revokeMinter(address minter) external onlyAdmin returns (bool) {
     revokeRole(MINTER_ROLE, minter);
     return true;
   }
 
   // assign burner role to another EOA or smart contract
-  function grantBurner(address burner) public onlyAdmin returns (bool) {
+  function grantBurner(address burner) external onlyAdmin returns (bool) {
     grantRole(BURNER_ROLE, burner);
     return true;
   }
 
   // revoke burner role to another EOA or smart contract
-  function revokeBurner(address burner) public onlyAdmin returns (bool) {
+  function revokeBurner(address burner) external onlyAdmin returns (bool) {
     revokeRole(BURNER_ROLE, burner);
     return true;
   }
 
   // assign blacklister role to another EOA or smart contract
   function grantBlacklister(address blacklister)
-    public
+    external
     onlyAdmin
     returns (bool)
   {
@@ -120,7 +120,7 @@ contract RoleAccess is AccessControlEnumerable {
 
   // revoke blacklister role to another EOA or smart contract
   function revokeBlacklister(address blacklister)
-    public
+    external
     onlyAdmin
     returns (bool)
   {

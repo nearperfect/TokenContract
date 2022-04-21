@@ -14,6 +14,7 @@ contract XToken is Pausable, RoleAccess, ERC20Burnable, ERC20Permit {
 
   // variables
   uint256 internal _cap;
+  mapping(address => bool) private frozen;
 
   constructor(
     string memory name,
@@ -76,6 +77,15 @@ contract XToken is Pausable, RoleAccess, ERC20Burnable, ERC20Permit {
     _unpause();
   }
 
+  // follow finCEN AML guidance
+  function freeze(address account) external onlyBlacklister {
+    frozen[account] = true;
+  }
+
+  function defrost(address account) external onlyBlacklister {
+    frozen[account] = false;
+  }
+
   // this hook runs before any mint or transfer function
   // it checks for pause and token cap
   function _beforeTokenTransfer(
@@ -89,5 +99,7 @@ contract XToken is Pausable, RoleAccess, ERC20Burnable, ERC20Permit {
       ERC20.totalSupply() + amount <= cap(),
       "ERC20 Capped: cap exceeded"
     );
+    require(!frozen[from], "Source account frozen");
+    require(!frozen[to], "Destination account frozen");
   }
 }

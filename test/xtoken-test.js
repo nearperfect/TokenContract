@@ -144,5 +144,92 @@ contract("XToken", function () {
         "Caller is not a admin"
       );
     });
+
+    it("frozen account can't transfer", async () => {
+      const BN82 = new BN("82");
+      const { alice, bob } = await getNamedAccounts();
+      await this.token.mint(alice, BN100);
+      await this.token.transfer(bob, BN18, { from: alice });
+      var balance = await this.token.balanceOf(bob);
+      expect(balance.eq(BN18)).to.be.true;
+      balance = await this.token.balanceOf(alice);
+      expect(balance.eq(BN82)).to.be.true;
+
+      // freeze
+      await this.token.freeze(alice);
+      await expectRevert(
+        this.token.transfer(bob, BN18, { from: alice }),
+        "Source account frozen"
+      );
+      await this.token.defrost(alice);
+      await this.token.freeze(bob);
+      await expectRevert(
+        this.token.transfer(bob, BN18, { from: alice }),
+        "Destination account frozen"
+      );
+
+      await this.token.defrost(bob);
+      await this.token.transfer(bob, BN18, { from: alice });
+    });
+
+    it("freeze reverted", async () => {
+      const { alice, bob } = await getNamedAccounts();
+      await expectRevert(
+        this.token.freeze(bob, { from: alice }),
+        "Caller is not a blacklister"
+      );
+      await expectRevert(
+        this.token.defrost(bob, { from: alice }),
+        "Caller is not a blacklister"
+      );
+    });
+
+    it("role grant/revoke should be admin", async () => {
+      const role = web3.utils.keccak256("MINTER_ROLE");
+      const { deployer, alice, bob } = await getNamedAccounts();
+      await expectRevert(
+        this.token.addRoleMember(role, alice, { from: bob }),
+        "Caller is not a admin"
+      );
+      await expectRevert(
+        this.token.removeRoleMember(role, alice, { from: bob }),
+        "Caller is not a admin"
+      );
+      await expectRevert(
+        this.token.grantMinter(alice, { from: bob }),
+        "Caller is not a admin"
+      );
+      await expectRevert(
+        this.token.grantBurner(alice, { from: bob }),
+        "Caller is not a admin"
+      );
+      await expectRevert(
+        this.token.grantBlacklister(alice, { from: bob }),
+        "Caller is not a admin"
+      );
+      await expectRevert(
+        this.token.revokeMinter(alice, { from: bob }),
+        "Caller is not a admin"
+      );
+      await expectRevert(
+        this.token.revokeBurner(alice, { from: bob }),
+        "Caller is not a admin"
+      );
+      await expectRevert(
+        this.token.revokeBlacklister(alice, { from: bob }),
+        "Caller is not a admin"
+      );
+      const admin_role =
+        "0x0000000000000000000000000000000000000000000000000000000000000000";
+      const bob_address = `${bob}`.toLowerCase();
+      await expectRevert(
+        this.token.grantRole(role, alice, { from: bob }),
+        `AccessControl: account ${bob_address} is missing role ${admin_role}`
+      );
+      await expectRevert(
+        this.token.revokeRole(role, alice, { from: bob }),
+        `AccessControl: account ${bob_address} is missing role ${admin_role}`
+      );
+    });
   });
 });
