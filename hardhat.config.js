@@ -8,8 +8,11 @@ require("solidity-coverage");
 require("hardhat-gas-reporter");
 require("hardhat-contract-sizer");
 require("hardhat-deploy");
-
 require("dotenv").config();
+require("./tasks/gran-role");
+require("./tasks/mint");
+require("./tasks/increase-cap");
+require("./tasks/check-token");
 
 const MUMBAI_PRIVATE_KEY_MOAC = process.env.MUMBAI_PRIVATE_KEY_MOAC;
 const POLYGON_STAGE_PRIVATE_KEY_MOAC =

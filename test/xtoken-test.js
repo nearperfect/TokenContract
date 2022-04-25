@@ -1,5 +1,4 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
 const { BN } = require("bn.js");
 const { getNamedAccounts } = require("hardhat");
 const XToken = artifacts.require("XToken");
@@ -7,6 +6,7 @@ const {
   shouldSupportInterfaces,
 } = require("./helpers/SupportsInterface.behavior");
 const { expectRevert } = require("@openzeppelin/test-helpers");
+
 const BN0 = new BN("0");
 const BN18 = new BN("18");
 const BN100 = new BN("100");
@@ -50,6 +50,27 @@ contract("XToken", function () {
         this.token.mint(alice, BN100, { from: alice }),
         "Caller is not a minter"
       );
+    });
+
+    it("transfer normally when totalsupply is cap", async () => {
+      const { deployer, alice, bob } = await getNamedAccounts();
+      await this.token.mint(alice, BNMAX);
+      let balance_alice = await this.token.balanceOf(alice);
+      expect(balance_alice.eq(BNMAX)).to.be.true;
+      await this.token.transfer(bob, BN100, {
+        from: alice,
+      });
+      let balance_bob = await this.token.balanceOf(bob);
+      expect(balance_bob.eq(BN100)).to.be.true;
+
+      // burn
+      await this.token.transfer(deployer, BN100, { from: bob });
+      await this.token.burn(BN100);
+      balance_bob = await this.token.balanceOf(bob);
+      expect(balance_bob.eq(BN0));
+      total_supply = await this.token.totalSupply();
+      // BNMAX = TOTAL SUPPLY + BN100
+      expect(total_supply.add(BN100).eq(BNMAX)).to.be.true;
     });
 
     it("burn normally", async () => {
@@ -98,7 +119,7 @@ contract("XToken", function () {
       await this.token.mint(alice, BNMAX);
       await expectRevert(
         this.token.mint(alice, BN100),
-        "ERC20 Capped: cap exceeded"
+        "ERC20Capped: cap exceeded"
       );
     });
 

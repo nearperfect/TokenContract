@@ -52,6 +52,7 @@ contract XToken is Pausable, RoleAccess, ERC20Burnable, ERC20Permit {
     onlyMinter
     whenNotPaused
   {
+    require(ERC20.totalSupply() + amount <= cap(), "ERC20Capped: cap exceeded");
     _mint(account, amount);
   }
 
@@ -95,10 +96,6 @@ contract XToken is Pausable, RoleAccess, ERC20Burnable, ERC20Permit {
   ) internal override {
     super._beforeTokenTransfer(from, to, amount);
     require(!paused(), "ERC20 Pausable: token transfer while paused");
-    require(
-      ERC20.totalSupply() + amount <= cap(),
-      "ERC20 Capped: cap exceeded"
-    );
     require(!frozen[from], "Source account frozen");
     require(!frozen[to], "Destination account frozen");
   }
