@@ -3,7 +3,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deployer } = await getNamedAccounts();
   const { ethers } = require("hardhat");
 
-  // The contract is upgradeable through UUPS
   await deploy("XToken", {
     from: deployer,
     log: true,

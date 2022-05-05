@@ -8,6 +8,7 @@ contract RoleAccess is AccessControlEnumerable {
   bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
   bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
   bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+  bytes32 public constant GRANTER_ROLE = keccak256("GRANTER_ROLE");
   bytes32 public constant BLACKLISTER_ROLE = keccak256("BLACKLISTER_ROLE");
 
   // struct
@@ -32,6 +33,11 @@ contract RoleAccess is AccessControlEnumerable {
     _;
   }
 
+  modifier onlyGranter() {
+    require(hasRole(GRANTER_ROLE, _msgSender()), "Caller is not a granter");
+    _;
+  }
+
   modifier onlyBlacklister() {
     require(
       hasRole(BLACKLISTER_ROLE, _msgSender()),
@@ -41,11 +47,12 @@ contract RoleAccess is AccessControlEnumerable {
   }
 
   function getRoles() public pure returns (Role[] memory) {
-    Role[] memory result = new Role[](4);
+    Role[] memory result = new Role[](5);
     result[1] = Role(ADMIN_ROLE, "admin for the contract");
     result[2] = Role(MINTER_ROLE, "minter can mint new coins");
     result[3] = Role(BURNER_ROLE, "burner can burn coins");
-    result[4] = Role(BLACKLISTER_ROLE, "blacklister can update blacklist");
+    result[4] = Role(GRANTER_ROLE, "granter can burn coins");
+    result[5] = Role(BLACKLISTER_ROLE, "blacklister can update blacklist");
     return result;
   }
 
@@ -105,6 +112,18 @@ contract RoleAccess is AccessControlEnumerable {
   // revoke burner role to another EOA or smart contract
   function revokeBurner(address burner) external onlyAdmin returns (bool) {
     revokeRole(BURNER_ROLE, burner);
+    return true;
+  }
+
+    // assign burner role to another EOA or smart contract
+  function grantGranter(address granter) external onlyAdmin returns (bool) {
+    grantRole(GRANTER_ROLE, granter);
+    return true;
+  }
+
+  // revoke burner role to another EOA or smart contract
+  function revokeGranter(address granter) external onlyAdmin returns (bool) {
+    revokeRole(GRANTER_ROLE, granter);
     return true;
   }
 
