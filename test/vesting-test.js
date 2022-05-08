@@ -52,17 +52,26 @@ contract("TokenVesting", function () {
       const vestingScheds = await tokenVesting.allVestingScheds();
       expect(vestingScheds[0].id).to.equal(0);
       expect(vestingScheds[0].name).to.equal("vesting 1 month");
-      expect(vestingScheds[0].vestingTime).to.equal(currentTime);
+      expect(vestingScheds[0].vestingTime).to.be.within(
+        currentTime - 1,
+        currentTime + 1
+      );
       expect(vestingScheds[0].grantAmount).to.equal(0);
       expect(vestingScheds[0].withdrawAmount).to.equal(0);
       expect(vestingScheds[1].id).to.equal(1);
       expect(vestingScheds[1].name).to.equal("vesting 3 month");
-      expect(vestingScheds[1].vestingTime).to.equal(currentTime);
+      expect(vestingScheds[1].vestingTime).to.be.within(
+        currentTime - 1,
+        currentTime + 1
+      );
       expect(vestingScheds[1].grantAmount).to.equal(0);
       expect(vestingScheds[1].withdrawAmount).to.equal(0);
       expect(vestingScheds[2].id).to.equal(2);
       expect(vestingScheds[2].name).to.equal("vesting 6 month");
-      expect(vestingScheds[2].vestingTime).to.equal(currentTime);
+      expect(vestingScheds[2].vestingTime).to.be.within(
+        currentTime - 1,
+        currentTime + 1
+      );
       expect(vestingScheds[2].grantAmount).to.equal(0);
       expect(vestingScheds[2].withdrawAmount).to.equal(0);
       expect(vestingScheds[3].id).to.equal(3);

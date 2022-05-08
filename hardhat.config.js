@@ -93,6 +93,9 @@ module.exports = {
       polygonMumbai: POLYSCAN_API_KEY,
     },
   },
+  gasReporter: {
+    enabled: true,
+  },
   solidity: {
     compilers: [
       {
