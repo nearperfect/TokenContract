@@ -21,6 +21,7 @@
     "hardhat-gas-reporter": "^1.0.8",
     "mocha-skip-if": "0.0.3",
     "solidity-coverage": "^0.7.17",
+    "solidity-docgen": "^0.6.0-beta.10",
     "web3": "^1.5.3"
   },
   "dependencies": {

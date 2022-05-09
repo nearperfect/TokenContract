@@ -65,11 +65,17 @@ contract TokenVesting is RoleAccess {
     _setupRole(GRANTER_ROLE, _msgSender());
   }
 
+  /// @notice Update the funding source address of vesting schedules
+  /// @param newfunding The new address of the funding source account
   function updateFunding(address newfunding) external onlyAdmin {
     funding = newfunding;
     emit Funding(funding);
   }
 
+  /// @notice Create new vesting schedule
+  /// @param name The name of the vesting schedule, such as "3-month vesting schedule"
+  /// @param vestingTime The timestamp in seconds of the beginning of the vesting period.
+  /// @return The id of the created new vesting schedule.
   function newVestingSched(string calldata name, uint256 vestingTime)
     external
     onlyAdmin
@@ -106,6 +112,11 @@ contract TokenVesting is RoleAccess {
     }
   }
 
+  /// @notice Grant a list of beneficiaries tokens for a vesting schedule
+  /// @param vestingSchedID_ The vesting schedule of the token grant
+  /// @param beneficiaries A list of beneficiaries addresses
+  /// @param grantAmounts A list of token amounts that each beneficiary will be granted
+  /// @return Return true if the function is called without any issue.
   function grant(
     uint256 vestingSchedID_,
     address[] calldata beneficiaries,
@@ -135,6 +146,9 @@ contract TokenVesting is RoleAccess {
     return true;
   }
 
+  /// @notice Withdraw tokens from vesting schedule into caller's address
+  /// @param vestingSchedID_ ID of the vesting schedule to withdraw token from.
+  /// @param amount Amount of token to withdraw.
   function withdraw(uint256 vestingSchedID_, uint256 amount)
     external
     returns (bool)
@@ -142,6 +156,10 @@ contract TokenVesting is RoleAccess {
     return _withdraw(vestingSchedID_, _msgSender(), amount);
   }
 
+  /// @notice Withdraw tokens from vesting schedule into beneficiary's address
+  /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
+  /// @param amount Amount of token to withdraw.
+  /// @param beneficiary The address that will receive the withdrawed tokens.
   function withdrawTo(
     uint256 vestingSchedID_,
     uint256 amount,
@@ -179,6 +197,10 @@ contract TokenVesting is RoleAccess {
     return true;
   }
 
+  /// @notice Transfer vesting between beneficiaries
+  /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
+  /// @param beneficiary The beneficiary that will receive the transfered grants.
+  /// @param amount The amount of transfered grants.
   function transfer(
     uint256 vestingSchedID_,
     address beneficiary,
@@ -202,6 +224,7 @@ contract TokenVesting is RoleAccess {
     return true;
   }
 
+  /// @notice Return all vesting schedules.
   function allVestingScheds() external view returns (VestingSched[] memory) {
     VestingSched[] memory vestingScheds_ = new VestingSched[](
       vestingSchedID.current()
@@ -213,6 +236,8 @@ contract TokenVesting is RoleAccess {
     return vestingScheds_;
   }
 
+  /// @notice Return all vesting schedules.
+  /// @param vestingSchedID_ a single vesting schedule by ID
   function vestingSched(uint256 vestingSchedID_)
     external
     view
@@ -221,6 +246,8 @@ contract TokenVesting is RoleAccess {
     return vestingScheds[vestingSchedID_];
   }
 
+  /// @notice Return all vesting schedules for a user.
+  /// @param beneficiary User's address
   function allSoloVestings(address beneficiary)
     external
     view
@@ -245,6 +272,9 @@ contract TokenVesting is RoleAccess {
     return soloVestings_;
   }
 
+  /// @notice Return beneficiary's grants for a certain vesting schedule.
+  /// @param vestingSchedID_ The ID of the vesting schedule.
+  /// @param beneficiary The beneficiary's account
   function soloVesting(uint256 vestingSchedID_, address beneficiary)
     external
     view

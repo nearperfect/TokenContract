@@ -7,6 +7,7 @@ require("@openzeppelin/hardhat-upgrades");
 require("solidity-coverage");
 require("hardhat-gas-reporter");
 require("hardhat-contract-sizer");
+require("solidity-docgen");
 require("hardhat-deploy");
 require("dotenv").config();
 require("./tasks/gran-role");
