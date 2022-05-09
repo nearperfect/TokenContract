@@ -65,7 +65,7 @@ contract TokenVesting is RoleAccess {
     _setupRole(GRANTER_ROLE, _msgSender());
   }
 
-  /// @notice Update the funding source address of vesting schedules
+  /// @notice Update the funding source of vesting schedules
   /// @param newfunding The new address of the funding source account
   function updateFunding(address newfunding) external onlyAdmin {
     funding = newfunding;
@@ -146,7 +146,7 @@ contract TokenVesting is RoleAccess {
     return true;
   }
 
-  /// @notice Withdraw tokens from vesting schedule into caller's address
+  /// @notice Withdraw granted tokens into caller's address
   /// @param vestingSchedID_ ID of the vesting schedule to withdraw token from.
   /// @param amount Amount of token to withdraw.
   function withdraw(uint256 vestingSchedID_, uint256 amount)
@@ -156,7 +156,7 @@ contract TokenVesting is RoleAccess {
     return _withdraw(vestingSchedID_, _msgSender(), amount);
   }
 
-  /// @notice Withdraw tokens from vesting schedule into beneficiary's address
+  /// @notice Withdraw granted tokens into beneficiary's address
   /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
   /// @param amount Amount of token to withdraw.
   /// @param beneficiary The address that will receive the withdrawed tokens.
@@ -236,7 +236,7 @@ contract TokenVesting is RoleAccess {
     return vestingScheds_;
   }
 
-  /// @notice Return all vesting schedules.
+  /// @notice Return a single vesting schedules.
   /// @param vestingSchedID_ a single vesting schedule by ID
   function vestingSched(uint256 vestingSchedID_)
     external
@@ -246,7 +246,7 @@ contract TokenVesting is RoleAccess {
     return vestingScheds[vestingSchedID_];
   }
 
-  /// @notice Return all vesting schedules for a user.
+  /// @notice Return all vesting schedules for a single user.
   /// @param beneficiary User's address
   function allSoloVestings(address beneficiary)
     external
@@ -272,7 +272,7 @@ contract TokenVesting is RoleAccess {
     return soloVestings_;
   }
 
-  /// @notice Return beneficiary's grants for a certain vesting schedule.
+  /// @notice Return beneficiary's vesting for a certain vesting schedule.
   /// @param vestingSchedID_ The ID of the vesting schedule.
   /// @param beneficiary The beneficiary's account
   function soloVesting(uint256 vestingSchedID_, address beneficiary)

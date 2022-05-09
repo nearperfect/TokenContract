@@ -43,7 +43,7 @@ accounts that have been granted it._
 
 ```solidity
 struct RoleData {
-  mapping(address &#x3D;&gt; bool) members;
+  mapping(address => bool) members;
   bytes32 adminRole;
 }
 ```
@@ -51,7 +51,7 @@ struct RoleData {
 ### _roles
 
 ```solidity
-mapping(bytes32 &#x3D;&gt; struct AccessControl.RoleData) _roles
+mapping(bytes32 => struct AccessControl.RoleData) _roles
 ```
 
 ### DEFAULT_ADMIN_ROLE
@@ -222,7 +222,7 @@ _Extension of {AccessControl} that allows enumerating the members of each role._
 ### _roleMembers
 
 ```solidity
-mapping(bytes32 &#x3D;&gt; struct EnumerableSet.AddressSet) _roleMembers
+mapping(bytes32 => struct EnumerableSet.AddressSet) _roleMembers
 ```
 
 ### supportsInterface
@@ -537,13 +537,13 @@ allowances. See {IERC20-approve}._
 ### _balances
 
 ```solidity
-mapping(address &#x3D;&gt; uint256) _balances
+mapping(address => uint256) _balances
 ```
 
 ### _allowances
 
 ```solidity
-mapping(address &#x3D;&gt; mapping(address &#x3D;&gt; uint256)) _allowances
+mapping(address => mapping(address => uint256)) _allowances
 ```
 
 ### _totalSupply
@@ -1014,7 +1014,7 @@ _Available since v3.4.__
 ### _nonces
 
 ```solidity
-mapping(address &#x3D;&gt; struct Counters.Counter) _nonces
+mapping(address => struct Counters.Counter) _nonces
 ```
 
 ### _PERMIT_TYPEHASH
@@ -1745,7 +1745,7 @@ and &#x60;uint256&#x60; (&#x60;UintSet&#x60;) are supported._
 ```solidity
 struct Set {
   bytes32[] _values;
-  mapping(bytes32 &#x3D;&gt; uint256) _indexes;
+  mapping(bytes32 => uint256) _indexes;
 }
 ```
 
@@ -2191,7 +2191,7 @@ uint256 _cap
 ### frozen
 
 ```solidity
-mapping(address &#x3D;&gt; bool) frozen
+mapping(address => bool) frozen
 ```
 
 ### constructor
@@ -2363,13 +2363,13 @@ struct Counters.Counter vestingSchedID
 ### vestingScheds
 
 ```solidity
-mapping(uint256 &#x3D;&gt; struct TokenVesting.VestingSched) vestingScheds
+mapping(uint256 => struct TokenVesting.VestingSched) vestingScheds
 ```
 
 ### soloVestings
 
 ```solidity
-mapping(bytes32 &#x3D;&gt; struct TokenVesting.SoloVesting) soloVestings
+mapping(bytes32 => struct TokenVesting.SoloVesting) soloVestings
 ```
 
 ### constructor
