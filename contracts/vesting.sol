@@ -142,8 +142,7 @@ contract TokenVesting is RoleAccess {
       emit Grant(vestingSchedID_, beneficiary, grantAmount);
     }
     vestingScheds[vestingSchedID_].grantAmount += grantTotal;
-    IERC20(token).transferFrom(funding, address(this), grantTotal);
-    return true;
+    return IERC20(token).transferFrom(funding, address(this), grantTotal);
   }
 
   /// @notice Withdraw granted tokens into caller's address
@@ -191,10 +190,9 @@ contract TokenVesting is RoleAccess {
     soloVestings[index].withdrawAmount += amount;
     vestingScheds[vestingSchedID_].withdrawAmount += amount;
 
-    // send the token
-    IERC20(token).transfer(beneficiary, amount);
+    // send the toke
     emit Withdraw(vestingSchedID_, _msgSender(), beneficiary, amount);
-    return true;
+    return IERC20(token).transfer(beneficiary, amount);
   }
 
   /// @notice Transfer vesting between beneficiaries

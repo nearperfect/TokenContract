@@ -46,7 +46,7 @@ contract RoleAccess is AccessControlEnumerable {
     _;
   }
 
-  function getRoles() public pure returns (Role[] memory) {
+  function getRoles() external pure returns (Role[] memory) {
     Role[] memory result = new Role[](5);
     result[1] = Role(ADMIN_ROLE, "admin for the contract");
     result[2] = Role(MINTER_ROLE, "minter can mint new coins");
