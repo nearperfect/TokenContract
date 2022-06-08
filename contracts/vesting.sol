@@ -62,7 +62,7 @@ contract TokenVesting is RoleAccess {
     // owner has all roles
     _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     _setupRole(ADMIN_ROLE, _msgSender());
-    _setupRole(GRANTER_ROLE, _msgSender());
+    //_setupRole(GRANTER_ROLE, _msgSender());
   }
 
   /// @notice Update the funding source of vesting schedules
@@ -121,7 +121,7 @@ contract TokenVesting is RoleAccess {
     uint256 vestingSchedID_,
     address[] calldata beneficiaries,
     uint256[] calldata grantAmounts
-  ) external onlyGranter returns (bool) {
+  ) external onlyAdmin returns (bool) {
     require(
       vestingScheds[vestingSchedID_].vestingTime > 0,
       "Vesting does not exist"
