@@ -19,7 +19,8 @@ require("./tasks/vesting");
 const MUMBAI_PRIVATE_KEY_MOAC = process.env.MUMBAI_PRIVATE_KEY_MOAC;
 const POLYGON_STAGE_PRIVATE_KEY_MOAC =
   process.env.POLYGON_STAGE_PRIVATE_KEY_MOAC;
-const POLYGON_PROD_PRIVATE_KEY_MOAC = process.env.POLYGON_PROD_PRIVATE_KEY_MOAC;
+const POLYGON_PROD_PRIVATE_KEY_OBOSKY =
+  process.env.POLYGON_PROD_PRIVATE_KEY_OBOSKY;
 const MUMBAI_MOAC_URL = process.env.MUMBAI_MOAC_URL;
 const POLYGON_STAGE_MOAC_URL = process.env.POLYGON_STAGE_MOAC_URL;
 const POLYGON_PROD_MOAC_URL = process.env.POLYGON_PROD_MOAC_URL;
@@ -65,7 +66,7 @@ module.exports = {
     polygon_production: {
       chainId: 137,
       url: POLYGON_PROD_MOAC_URL,
-      accounts: [POLYGON_PROD_PRIVATE_KEY_MOAC],
+      accounts: [POLYGON_PROD_PRIVATE_KEY_OBOSKY],
       tags: ["polygon_production"],
     },
   },

@@ -6,9 +6,9 @@ task("mint", "Mint coins to an address")
   .setAction(async (taskArgs) => {
     const account = web3.utils.toChecksumAddress(taskArgs.account);
     const xtoken = await ethers.getContract("XToken");
-    const BNCOIN = new BN("1000000000000000000");
+    const oneCOIN = new BN("1000000000000000000");
     const amount = ethers.BigNumber.from(
-      BNCOIN.mul(new BN(taskArgs.amount)).toString()
+      oneCOIN.mul(new BN(taskArgs.amount)).toString()
     );
 
     console.log(
