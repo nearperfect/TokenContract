@@ -17,6 +17,7 @@ require("./tasks/check-token");
 require("./tasks/vesting");
 require("./tasks/transfer");
 require("./tasks/obo-drop");
+require("./tasks/obo-rewards");
 
 const MUMBAI_PRIVATE_KEY_MOAC = process.env.MUMBAI_PRIVATE_KEY_MOAC;
 const POLYGON_STAGE_PRIVATE_KEY_MOAC =
