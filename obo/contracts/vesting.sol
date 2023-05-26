@@ -48,12 +48,21 @@ contract TokenVesting is RoleAccess {
         address indexed to,
         uint256 amount
     );
+    event Approval(
+        uint256 indexed vestingSchedID,
+        address indexed owner,
+        address indexed spender,
+        uint256 amount
+    );
 
     address public token;
     address public funding;
     Counters.Counter public vestingSchedID;
-    mapping(uint256 => VestingSched) private vestingScheds;
-    mapping(bytes32 => SoloVesting) private soloVestings;
+    mapping(uint256 => VestingSched) private _vestingScheds;
+    mapping(bytes32 => SoloVesting) private _soloVestings;
+    // scheduleID => owner => spender => amount
+    mapping(uint256 => mapping(address => mapping(address => uint256)))
+        private _allowances;
 
     constructor(address token_, address funding_) {
         token = token_;
@@ -76,13 +85,12 @@ contract TokenVesting is RoleAccess {
     /// @param name The name of the vesting schedule, such as "3-month vesting schedule"
     /// @param vestingTime The timestamp in seconds of the beginning of the vesting period.
     /// @return The id of the created new vesting schedule.
-    function newVestingSched(string calldata name, uint256 vestingTime)
-        external
-        onlyAdmin
-        returns (uint256)
-    {
+    function newVestingSched(
+        string calldata name,
+        uint256 vestingTime
+    ) external onlyAdmin returns (uint256) {
         uint256 id = vestingSchedID.current();
-        vestingScheds[id] = VestingSched(id, name, vestingTime, 0, 0);
+        _vestingScheds[id] = VestingSched(id, name, vestingTime, 0, 0);
         vestingSchedID.increment();
 
         emit Vesting(id, name, vestingTime);
@@ -93,22 +101,22 @@ contract TokenVesting is RoleAccess {
         uint256 vestingSchedID_,
         address beneficiary,
         uint256 amount
-    ) internal {
+    ) internal virtual {
         require(
-            vestingScheds[vestingSchedID_].vestingTime > 0,
+            _vestingScheds[vestingSchedID_].vestingTime > 0,
             "Vesting does not exist"
         );
         bytes32 indexTo = keccak256(abi.encode(vestingSchedID_, beneficiary));
         // if soloVesting entry does not exist
-        if (soloVestings[indexTo].beneficiary == address(0)) {
-            soloVestings[indexTo] = SoloVesting(
+        if (_soloVestings[indexTo].beneficiary == address(0)) {
+            _soloVestings[indexTo] = SoloVesting(
                 vestingSchedID_,
                 beneficiary,
                 amount,
                 0
             );
         } else {
-            soloVestings[indexTo].grantAmount += amount;
+            _soloVestings[indexTo].grantAmount += amount;
         }
     }
 
@@ -123,7 +131,7 @@ contract TokenVesting is RoleAccess {
         uint256[] calldata grantAmounts
     ) external onlyGranter returns (bool) {
         require(
-            vestingScheds[vestingSchedID_].vestingTime > 0,
+            _vestingScheds[vestingSchedID_].vestingTime > 0,
             "Vesting does not exist"
         );
         require(
@@ -141,17 +149,17 @@ contract TokenVesting is RoleAccess {
             _grant(vestingSchedID_, beneficiary, grantAmount);
             emit Grant(vestingSchedID_, beneficiary, grantAmount);
         }
-        vestingScheds[vestingSchedID_].grantAmount += grantTotal;
+        _vestingScheds[vestingSchedID_].grantAmount += grantTotal;
         return IERC20(token).transferFrom(funding, address(this), grantTotal);
     }
 
     /// @notice Withdraw granted tokens into caller's address
     /// @param vestingSchedID_ ID of the vesting schedule to withdraw token from.
     /// @param amount Amount of token to withdraw.
-    function withdraw(uint256 vestingSchedID_, uint256 amount)
-        external
-        returns (bool)
-    {
+    function withdraw(
+        uint256 vestingSchedID_,
+        uint256 amount
+    ) external returns (bool) {
         return _withdraw(vestingSchedID_, _msgSender(), amount);
     }
 
@@ -173,56 +181,129 @@ contract TokenVesting is RoleAccess {
         uint256 amount
     ) internal returns (bool) {
         require(
-            vestingScheds[vestingSchedID_].vestingTime > 0,
+            _vestingScheds[vestingSchedID_].vestingTime > 0,
             "Vesting does not exist"
         );
         require(beneficiary != address(0), "Can not withdraw to null address");
         require(amount > 0, "Withdraw amount should be non-zero");
         require(
-            block.timestamp > vestingScheds[vestingSchedID_].vestingTime,
+            block.timestamp > _vestingScheds[vestingSchedID_].vestingTime,
             "Can not withdraw before vesting starts"
         );
 
         bytes32 index = keccak256(abi.encode(vestingSchedID_, _msgSender()));
-        SoloVesting memory soloVesting_ = soloVestings[index];
+        SoloVesting memory soloVesting_ = _soloVestings[index];
         uint256 netAmount = soloVesting_.grantAmount -
             soloVesting_.withdrawAmount;
         require(netAmount >= amount, "Not sufficient fund for withdrawal");
-        soloVestings[index].withdrawAmount += amount;
-        vestingScheds[vestingSchedID_].withdrawAmount += amount;
+        _soloVestings[index].withdrawAmount += amount;
+        _vestingScheds[vestingSchedID_].withdrawAmount += amount;
 
         // send the toke
         emit Withdraw(vestingSchedID_, _msgSender(), beneficiary, amount);
         return IERC20(token).transfer(beneficiary, amount);
     }
 
-    /// @notice Transfer vesting between beneficiaries
-    /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
+    /// @notice Transfer vesting between beneficiaries after approval
+    /// @param from The source account of the token transfer.
     /// @param beneficiary The beneficiary that will receive the transfered grants.
+    /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
     /// @param amount The amount of transfered grants.
-    function transfer(
-        uint256 vestingSchedID_,
+    function transferFrom(
+        address from,
         address beneficiary,
+        uint256 vestingSchedID_,
         uint256 amount
     ) external returns (bool) {
+        address spender = _msgSender();
+        _spendAllowance(from, spender, vestingSchedID_, amount);
+        _transfer(from, beneficiary, vestingSchedID_, amount);
+        return true;
+    }
+
+    function _spendAllowance(
+        address owner,
+        address spender,
+        uint256 vestingSchedID_,
+        uint256 amount
+    ) internal virtual {
+        uint256 currentAllowance = _allowances[vestingSchedID_][owner][spender];
+        if (currentAllowance != type(uint256).max) {
+            require(currentAllowance >= amount, "insufficient allowance");
+            unchecked {
+                _approve(
+                    owner,
+                    spender,
+                    vestingSchedID_,
+                    currentAllowance - amount
+                );
+            }
+        }
+    }
+
+    /// @notice Allow the spender to transfer up to certain amount of token from owner's vesting
+    /// @param spender The beneficiary that will be approved.
+    /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
+    /// @param amount The amount of transfered grants.
+    function approve(
+        address spender,
+        uint256 vestingSchedID_,
+        uint256 amount
+    ) external returns (bool) {
+        address owner = _msgSender();
+        _approve(owner, spender, vestingSchedID_, amount);
+        return true;
+    }
+
+    function _approve(
+        address owner,
+        address spender,
+        uint256 vestingSchedID_,
+        uint256 amount
+    ) internal virtual {
+        require(owner != address(0), "approve from the zero address");
+        require(spender != address(0), "approve to the zero address");
+
+        _allowances[vestingSchedID_][owner][spender] = amount;
+        emit Approval(vestingSchedID_, owner, spender, amount);
+    }
+
+    /// @notice Transfer vesting between beneficiaries
+    /// @param beneficiary The beneficiary that will receive the transfered grants.
+    /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
+    /// @param amount The amount of transfered grants.
+    function transfer(
+        address beneficiary,
+        uint256 vestingSchedID_,
+        uint256 amount
+    ) external returns (bool) {
+        address from = _msgSender();
+        _transfer(from, beneficiary, vestingSchedID_, amount);
+        return true;
+    }
+
+    function _transfer(
+        address from,
+        address beneficiary,
+        uint256 vestingSchedID_,
+        uint256 amount
+    ) internal virtual returns (bool) {
         require(
-            vestingScheds[vestingSchedID_].vestingTime > 0,
+            _vestingScheds[vestingSchedID_].vestingTime > 0,
             "Vesting does not exist"
         );
         require(beneficiary != address(0), "Can not transfer to null address");
         require(amount > 0, "Transfer amount should be non-zero");
 
-        bytes32 indexFrom = keccak256(
-            abi.encode(vestingSchedID_, _msgSender())
-        );
-        SoloVesting memory soloVesting_ = soloVestings[indexFrom];
+        bytes32 indexFrom = keccak256(abi.encode(vestingSchedID_, from));
+        SoloVesting memory soloVesting_ = _soloVestings[indexFrom];
         uint256 netAmount = soloVesting_.grantAmount -
             soloVesting_.withdrawAmount;
         require(netAmount >= amount, "Not sufficient fund for transfer");
-        soloVestings[indexFrom].grantAmount -= amount;
+        _soloVestings[indexFrom].grantAmount -= amount;
         _grant(vestingSchedID_, beneficiary, amount);
 
-        emit Transfer(vestingSchedID_, _msgSender(), beneficiary, amount);
+        emit Transfer(vestingSchedID_, from, beneficiary, amount);
         return true;
     }
 
@@ -232,7 +313,7 @@ contract TokenVesting is RoleAccess {
             vestingSchedID.current()
         );
         for (uint256 i = 0; i < vestingSchedID.current(); i++) {
-            vestingScheds_[i] = vestingScheds[i];
+            vestingScheds_[i] = _vestingScheds[i];
         }
 
         return vestingScheds_;
@@ -240,25 +321,21 @@ contract TokenVesting is RoleAccess {
 
     /// @notice Return a single vesting schedules.
     /// @param vestingSchedID_ a single vesting schedule by ID
-    function vestingSched(uint256 vestingSchedID_)
-        external
-        view
-        returns (VestingSched memory)
-    {
-        return vestingScheds[vestingSchedID_];
+    function vestingSched(
+        uint256 vestingSchedID_
+    ) external view returns (VestingSched memory) {
+        return _vestingScheds[vestingSchedID_];
     }
 
     /// @notice Return all vesting schedules for a single user.
     /// @param beneficiary User's address
-    function allSoloVestings(address beneficiary)
-        external
-        view
-        returns (SoloVesting[] memory)
-    {
+    function allSoloVestings(
+        address beneficiary
+    ) external view returns (SoloVesting[] memory) {
         uint256 length = 0;
         for (uint256 i = 0; i < vestingSchedID.current(); i++) {
             bytes32 index = keccak256(abi.encode(i, beneficiary));
-            if (soloVestings[index].grantAmount > 0) {
+            if (_soloVestings[index].grantAmount > 0) {
                 length += 1;
             }
         }
@@ -266,8 +343,8 @@ contract TokenVesting is RoleAccess {
         SoloVesting[] memory soloVestings_ = new SoloVesting[](length);
         for (uint256 i = 0; i < vestingSchedID.current(); i++) {
             bytes32 index = keccak256(abi.encode(i, beneficiary));
-            if (soloVestings[index].grantAmount > 0) {
-                soloVestings_[i] = soloVestings[index];
+            if (_soloVestings[index].grantAmount > 0) {
+                soloVestings_[i] = _soloVestings[index];
             }
         }
 
@@ -277,12 +354,11 @@ contract TokenVesting is RoleAccess {
     /// @notice Return beneficiary's vesting for a certain vesting schedule.
     /// @param vestingSchedID_ The ID of the vesting schedule.
     /// @param beneficiary The beneficiary's account
-    function soloVesting(uint256 vestingSchedID_, address beneficiary)
-        external
-        view
-        returns (SoloVesting memory)
-    {
+    function soloVesting(
+        uint256 vestingSchedID_,
+        address beneficiary
+    ) external view returns (SoloVesting memory) {
         bytes32 index = keccak256(abi.encode(vestingSchedID_, beneficiary));
-        return soloVestings[index];
+        return _soloVestings[index];
     }
 }
