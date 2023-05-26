@@ -1,48 +1,36 @@
 {
-  "scripts": {
-    "test": "yarn hardhat test",
-    "compile": "yarn hardhat compile",
-    "solhint": "./node_modules/.bin/solhint 'contracts/**/*.sol'"
+  "name": "obo",
+  "version": "1.0.0",
+  "description": "This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.",
+  "main": "hardhat.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
   },
-  "name": "OBO-Token",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@0.3.0-beta.10",
-    "@nomiclabs/hardhat-truffle5": "2.0.1",
-    "@nomiclabs/hardhat-web3": "2.0.0",
-    "@openzeppelin/contracts-upgradeable": "4.5.0",
-    "@openzeppelin/test-helpers": "0.5.13",
-    "chai": "4.3.4",
-    "chai-bignumber": "3.0.0",
-    "ethereum-waffle": "3.4.0",
-    "ethers": "5.4.6",
-    "hardhat": "2.5.0",
-    "hardhat-contract-sizer": "2.1.0",
-    "hardhat-deploy": "0.9.1",
-    "hardhat-gas-reporter": "1.0.8",
-    "mocha-skip-if": "0.0.3",
-    "solidity-coverage": "0.7.17",
-    "solidity-docgen": "0.6.0-beta.10",
-    "web3": "1.5.3"
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-etherscan": "^3.1.7",
+    "@nomiclabs/hardhat-truffle5": "^2.0.7",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@openzeppelin/hardhat-upgrades": "^1.26.0",
+    "@openzeppelin/test-helpers": "^0.5.16",
+    "csvtojson": "^2.0.10",
+    "dotenv": "^16.0.3",
+    "hardhat": "^2.14.0",
+    "hardhat-contract-sizer": "^2.9.0",
+    "hardhat-deploy": "^0.11.29",
+    "hardhat-gas-reporter": "^1.0.9",
+    "solidity-coverage": "^0.8.2",
+    "solidity-docgen": "^0.6.0-beta.35"
   },
   "dependencies": {
-    "@chainlink/contracts": "0.2.1",
-    "@ethersproject/wallet": "5.4.0",
-    "@nomiclabs/hardhat-etherscan": "3.0.3",
-    "@nomiclabs/hardhat-waffle": "2.0.1",
-    "@openzeppelin/contracts": "4.5.0",
-    "@openzeppelin/hardhat-upgrades": "1.17.0",
-    "@pinata/sdk": "1.1.24",
-    "@tenderly/hardhat-tenderly": "1.0.13",
-    "chai": "4.3.4",
-    "csv-parser": "3.0.0",
-    "csvtojson": "2.0.10",
-    "dotenv": "10.0.0",
-    "ethereum-waffle": "3.4.0",
-    "hardhat": "2.5.0",
-    "hardhat-log-remover": "2.0.2",
-    "prettier": "2.3.2",
-    "prettier-plugin-solidity": "1.0.0-beta.17",
-    "solhint": "3.3.6",
-    "solhint-plugin-prettier": "0.0.5"
+    "@openzeppelin/contracts": "^4.9.0"
   }
 }
