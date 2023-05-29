@@ -509,7 +509,7 @@ contract("TokenVesting", function () {
       // revert
       await expectRevert(
         tokenVesting.connect(bob).updateFunding(darwin.address),
-        "Caller is not a admin"
+        "Caller is not a granter"
       );
     });
 

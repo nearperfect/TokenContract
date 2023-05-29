@@ -76,7 +76,7 @@ contract TokenVesting is RoleAccess {
 
     /// @notice Update the funding source of vesting schedules
     /// @param newfunding The new address of the funding source account
-    function updateFunding(address newfunding) external onlyAdmin {
+    function updateFunding(address newfunding) external onlyGranter {
         funding = newfunding;
         emit Funding(funding);
     }
@@ -88,7 +88,7 @@ contract TokenVesting is RoleAccess {
     function newVestingSched(
         string calldata name,
         uint256 vestingTime
-    ) external onlyAdmin returns (uint256) {
+    ) external onlyGranter returns (uint256) {
         uint256 id = vestingSchedID.current();
         _vestingScheds[id] = VestingSched(id, name, vestingTime, 0, 0);
         vestingSchedID.increment();

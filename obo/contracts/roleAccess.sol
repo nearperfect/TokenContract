@@ -56,31 +56,27 @@ contract RoleAccess is AccessControlEnumerable {
         return result;
     }
 
-    function addRoleMember(bytes32 role, address member)
-        external
-        onlyAdmin
-        returns (bool)
-    {
+    function addRoleMember(
+        bytes32 role,
+        address member
+    ) external onlyAdmin returns (bool) {
         grantRole(role, member);
         return true;
     }
 
-    function removeRoleMember(bytes32 role, address member)
-        external
-        onlyAdmin
-        returns (bool)
-    {
+    function removeRoleMember(
+        bytes32 role,
+        address member
+    ) external onlyAdmin returns (bool) {
         if (hasRole(role, member)) {
             revokeRole(role, member);
         }
         return true;
     }
 
-    function getRoleMembers(bytes32 role)
-        external
-        view
-        returns (address[] memory)
-    {
+    function getRoleMembers(
+        bytes32 role
+    ) external view returns (address[] memory) {
         uint256 count = getRoleMemberCount(role);
         address[] memory members_ = new address[](count);
         for (uint256 index = 0; index < count; index++) {
@@ -128,21 +124,17 @@ contract RoleAccess is AccessControlEnumerable {
     }
 
     // assign blacklister role to another EOA or smart contract
-    function grantBlacklister(address blacklister)
-        external
-        onlyAdmin
-        returns (bool)
-    {
+    function grantBlacklister(
+        address blacklister
+    ) external onlyAdmin returns (bool) {
         grantRole(BLACKLISTER_ROLE, blacklister);
         return true;
     }
 
     // revoke blacklister role to another EOA or smart contract
-    function revokeBlacklister(address blacklister)
-        external
-        onlyAdmin
-        returns (bool)
-    {
+    function revokeBlacklister(
+        address blacklister
+    ) external onlyAdmin returns (bool) {
         revokeRole(BLACKLISTER_ROLE, blacklister);
         return true;
     }
