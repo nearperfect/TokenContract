@@ -1,5 +1,4 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, expect } = require("hardhat");
 const { expectRevert, expectEvent } = require("@openzeppelin/test-helpers");
 const { BigNumber } = require("ethers");
 
@@ -314,15 +313,13 @@ contract("TokenVesting", function () {
         [bob.address, charlie.address, darwin.address],
         [2000, 2000, 2000]
       );
-
+  
       // transfer from bob to charlie in vesting 0
-      const receipt = await tokenVesting
-        .connect(bob)
-        .transfer(0, darwin.address, 200);
+      const receipt = await tokenVesting.connect(bob).transfer(darwin.address, 0, 200);
       expect(receipt)
         .emit(tokenVesting, "Transfer")
         .withArgs(0, bob.address, darwin.address, 200);
-
+      
       var vestingSched = await tokenVesting.vestingSched(0);
       expect(vestingSched.grantAmount).to.equal(3000);
       expect(vestingSched.withdrawAmount).to.equal(0);
@@ -336,7 +333,7 @@ contract("TokenVesting", function () {
       expect(soloVesting.withdrawAmount).to.equal(0);
 
       // transfer from bob to charlie in vesting 1
-      await tokenVesting.connect(bob).transfer(1, charlie.address, 500);
+      await tokenVesting.connect(bob).transfer(charlie.address, 1, 500);
 
       var vestingSched = await tokenVesting.vestingSched(1);
       expect(vestingSched.grantAmount).to.equal(6000);
@@ -375,22 +372,131 @@ contract("TokenVesting", function () {
       );
 
       // transfer too much
-      await expectRevert(
-        tokenVesting.connect(bob).transfer(0, charlie.address, 5000),
+      await expectRevert(tokenVesting.connect(bob).transfer(charlie.address, 0, 5000),
         "Not sufficient fund for transfer"
       );
 
       // transfer 0
       await expectRevert(
-        tokenVesting.connect(bob).transfer(0, charlie.address, 0),
+        tokenVesting.connect(bob).transfer(charlie.address, 0, 0),
         "Transfer amount should be non-zero"
       );
 
       // transfer from non-exist vesting id
       await expectRevert(
-        tokenVesting.connect(bob).transfer(10, charlie.address, 1),
+        tokenVesting.connect(bob).transfer(charlie.address, 10, 1),
         "Vesting does not exist"
       );
+    });
+
+    it("transferFrom normally and reverts", async () => {
+      await tokenVesting.grant(
+        0,
+        [bob.address, charlie.address, darwin.address],
+        [1000, 1000, 1000]
+      );
+      await tokenVesting.grant(
+        1,
+        [bob.address, charlie.address, darwin.address],
+        [2000, 2000, 2000]
+      );
+
+      // approve vesting 0
+      await tokenVesting.connect(bob).approve(alice.address, 0, 1000);
+      await tokenVesting.connect(charlie).approve(alice.address, 0, 1000);
+      await tokenVesting.connect(darwin).approve(alice.address, 0, 1000);
+
+      // approve vesting 1
+      await tokenVesting.connect(bob).approve(alice.address, 1, 2000);
+      await tokenVesting.connect(charlie).approve(alice.address, 1, 2000);
+      await tokenVesting.connect(darwin).approve(alice.address, 1, 2000);
+      
+      // check alice allowance vesting 0
+      var allowance = await tokenVesting.allowance(bob.address, alice.address, 0);
+      expect(allowance).to.equal(1000);
+      allowance = await tokenVesting.allowance(charlie.address, alice.address, 0);
+      expect(allowance).to.equal(1000);
+      allowance = await tokenVesting.allowance(darwin.address, alice.address, 0);
+      expect(allowance).to.equal(1000);
+
+      // check alice allowance vesting 1
+      allowance = await tokenVesting.allowance(bob.address, alice.address, 1);
+      expect(allowance).to.equal(2000);
+      allowance = await tokenVesting.allowance(charlie.address, alice.address, 1);
+      expect(allowance).to.equal(2000);
+      allowance = await tokenVesting.allowance(darwin.address, alice.address, 1);
+      expect(allowance).to.equal(2000);
+
+      // alice soloVesting
+      var soloVesting = await tokenVesting.soloVesting(0, alice.address);
+      expect(soloVesting.grantAmount).to.equal(0);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+      soloVesting = await tokenVesting.soloVesting(1, alice.address);
+      expect(soloVesting.grantAmount).to.equal(0);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+
+      // transfer from bob to alice in vesting 0
+      const receipt = await tokenVesting.connect(alice).transferFrom(bob.address, alice.address, 0, 200);
+      expect(receipt)
+        .emit(tokenVesting, "Transfer")
+        .withArgs(0, bob.address, alice.address, 200);
+      
+      var vestingSched = await tokenVesting.vestingSched(0);
+      expect(vestingSched.grantAmount).to.equal(3000);
+      expect(vestingSched.withdrawAmount).to.equal(0);
+
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(800);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+
+      soloVesting = await tokenVesting.soloVesting(0, alice.address);
+      expect(soloVesting.grantAmount).to.equal(200);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+
+      // transfer from bob to alice will revert if amount > approved
+      allowance = await tokenVesting.allowance(bob.address, alice.address, 0);
+      expect(allowance).to.equal(800);
+      await expectRevert(
+        tokenVesting.connect(alice).transferFrom(bob.address, alice.address, 0, 1000),
+        "Insufficient allowance")
+
+      // transfer from bob to chalie in so that balance < allowance for alice
+      await tokenVesting.connect(bob).transfer(charlie.address, 0, 200);
+      // bob decrease to 600
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(600);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+      // charlie increase to 1200
+      soloVesting = await tokenVesting.soloVesting(0, charlie.address);
+      expect(soloVesting.grantAmount).to.equal(1200);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+
+      // transfer from bob to alice in vesting 0
+      allowance = await tokenVesting.allowance(bob.address, alice.address, 0);
+      expect(allowance).to.equal(800);
+      // alice allowance 800 but bob only has 600
+      await expectRevert(
+        tokenVesting.connect(alice).transferFrom(bob.address, alice.address, 0, 800),
+        "Not sufficient fund for transfer"
+      );
+      // transfer 600 from bob to alices
+      await tokenVesting.connect(alice).transferFrom(bob.address, alice.address, 0, 600);
+
+      // check bob and alice balance
+      // bob: 1000-200-200-600 = 0
+      var soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(0);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+      // alice: 200+600
+      soloVesting = await tokenVesting.soloVesting(0, alice.address);
+      expect(soloVesting.grantAmount).to.equal(800);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+
+      // no approve, no tranferFrom
+      await expectRevert(
+        tokenVesting.connect(charlie).transferFrom(bob.address, alice.address, 0, 100),
+        "Insufficient allowance"
+      )
     });
 
     it("update funding normally", async () => {

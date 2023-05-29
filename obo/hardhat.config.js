@@ -1,8 +1,8 @@
 require("@nomiclabs/hardhat-ethers");
-require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-web3");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
+require("@nomicfoundation/hardhat-chai-matchers")
 require("@openzeppelin/hardhat-upgrades");
 require("solidity-coverage");
 require("hardhat-gas-reporter");
@@ -39,21 +39,18 @@ const MUMBAI_PRIVATE_KEY_CHARLIE_MOAC =
 const MUMBAI_PRIVATE_KEY_BECKETT = process.env.MUMBAI_PRIVATE_KEY_BECKETT;
 
 module.exports = {
+  defaultNetwork: "hardhat",
   networks: {
     hardhat: {
       tags: ["local"],
       allowUnlimitedContractSize: true,
     },
-    localhost: {
-      url: "http://127.0.0.1:8545",
-      tags: ["localhost"],
-    },
     mumbai: {
       url: MUMBAI_MOAC_URL,
       accounts: [
-        //MUMBAI_PRIVATE_KEY_MOAC,
-        //MUMBAI_PRIVATE_KEY_OWNER_MOAC,
-        //MUMBAI_PRIVATE_KEY_ALICE_MOAC,
+        MUMBAI_PRIVATE_KEY_MOAC,
+        MUMBAI_PRIVATE_KEY_OWNER_MOAC,
+        MUMBAI_PRIVATE_KEY_ALICE_MOAC,
         //MUMBAI_PRIVATE_KEY_BOB_MOAC,
         //MUMBAI_PRIVATE_KEY_CHARLIE_MOAC,
         //MUMBAI_PRIVATE_KEY_BECKETT,

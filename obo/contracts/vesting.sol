@@ -204,43 +204,6 @@ contract TokenVesting is RoleAccess {
         return IERC20(token).transfer(beneficiary, amount);
     }
 
-    /// @notice Transfer vesting between beneficiaries after approval
-    /// @param from The source account of the token transfer.
-    /// @param beneficiary The beneficiary that will receive the transfered grants.
-    /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
-    /// @param amount The amount of transfered grants.
-    function transferFrom(
-        address from,
-        address beneficiary,
-        uint256 vestingSchedID_,
-        uint256 amount
-    ) external returns (bool) {
-        address spender = _msgSender();
-        _spendAllowance(from, spender, vestingSchedID_, amount);
-        _transfer(from, beneficiary, vestingSchedID_, amount);
-        return true;
-    }
-
-    function _spendAllowance(
-        address owner,
-        address spender,
-        uint256 vestingSchedID_,
-        uint256 amount
-    ) internal virtual {
-        uint256 currentAllowance = _allowances[vestingSchedID_][owner][spender];
-        if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "insufficient allowance");
-            unchecked {
-                _approve(
-                    owner,
-                    spender,
-                    vestingSchedID_,
-                    currentAllowance - amount
-                );
-            }
-        }
-    }
-
     /// @notice Allow the spender to transfer up to certain amount of token from owner's vesting
     /// @param spender The beneficiary that will be approved.
     /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
@@ -268,7 +231,19 @@ contract TokenVesting is RoleAccess {
         emit Approval(vestingSchedID_, owner, spender, amount);
     }
 
-    /// @notice Transfer vesting between beneficiaries
+    /// @notice Return the allowed amount of token the spender can transfer from owner's vesting.
+    /// @param owner The owner of the vesting.
+    /// @param spender The spender of the allowance.
+    /// @param vestingSchedID_ The ID of the vesting schedule to transfer token from.
+    function allowance(
+        address owner,
+        address spender,
+        uint256 vestingSchedID_
+    ) external view returns (uint256) {
+        return _allowances[vestingSchedID_][owner][spender];
+    }
+
+    /// @notice Transfer vesting between beneficiaries.
     /// @param beneficiary The beneficiary that will receive the transfered grants.
     /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
     /// @param amount The amount of transfered grants.
@@ -280,6 +255,43 @@ contract TokenVesting is RoleAccess {
         address from = _msgSender();
         _transfer(from, beneficiary, vestingSchedID_, amount);
         return true;
+    }
+
+    /// @notice Transfer vesting between beneficiaries after approval
+    /// @param from The source account of the token transfer.
+    /// @param beneficiary The beneficiary that will receive the transfered grants.
+    /// @param vestingSchedID_ The ID of the vesting schedule to withdraw token from.
+    /// @param amount The amount of transfered grants.
+    function transferFrom(
+        address from,
+        address beneficiary,
+        uint256 vestingSchedID_,
+        uint256 amount
+    ) external returns (bool) {
+        address spender = _msgSender();
+        _spendAllowance(from, spender, vestingSchedID_, amount);
+        _transfer(from, beneficiary, vestingSchedID_, amount);
+        return true;
+    }
+
+    function _spendAllowance(
+        address owner,
+        address spender,
+        uint256 vestingSchedID_,
+        uint256 amount
+    ) internal virtual {
+        uint256 currentAllowance = _allowances[vestingSchedID_][owner][spender];
+        if (currentAllowance != type(uint256).max) {
+            require(currentAllowance >= amount, "Insufficient allowance");
+            unchecked {
+                _approve(
+                    owner,
+                    spender,
+                    vestingSchedID_,
+                    currentAllowance - amount
+                );
+            }
+        }
     }
 
     function _transfer(

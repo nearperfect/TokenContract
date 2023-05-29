@@ -24,8 +24,8 @@ contract("XToken", function () {
 
   describe("sanity check ERC20 functionality", () => {
     it("name symbol and totalSupply", async () => {
-      expect(await this.token.name()).to.equal("Geodnet Token");
-      expect(await this.token.symbol()).to.equal("GEOD");
+      expect(await this.token.name()).to.equal("Obosky Token");
+      expect(await this.token.symbol()).to.equal("OBO");
       const BNcap = BNMAX;
       const totalSupply = await this.token.totalSupply();
       expect(totalSupply.eq(BN0)).to.be.true;
