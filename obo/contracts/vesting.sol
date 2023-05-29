@@ -179,7 +179,7 @@ contract TokenVesting is RoleAccess {
         uint256 vestingSchedID_,
         address beneficiary,
         uint256 amount
-    ) internal returns (bool) {
+    ) internal virtual returns (bool) {
         require(
             _vestingScheds[vestingSchedID_].vestingTime > 0,
             "Vesting does not exist"
