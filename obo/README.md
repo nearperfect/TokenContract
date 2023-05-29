@@ -15,7 +15,7 @@ npx hardhat help
 ```
 
 
-## 主要函数：
+## 锁仓合约vesting.sol主要函数：
 ---
 ### 构造函数
 ```
@@ -46,7 +46,7 @@ transfer：将锁仓额度赠与其他人
 
 approve：授予其他账号调用transfer的额度
 
-transferFrom：approve后可调用，类似transfer
+transferFrom：approve后可调用，类似transfer，但需要指定来源from
 ```
 
 #### 只读函数：
@@ -58,4 +58,17 @@ allVestingScheds：返回所有的锁仓计划
 vestingSched：返回单个锁仓计划 allSoloVestings：返回某个地址的所有锁仓计划
 
 soloVesting：返回某个地址的某个锁仓计划
+```
+
+## 调用示例：
+```
+1. 创建新的锁仓计划：newVestingSched
+
+2. 授予用户锁仓额度：grant
+
+3. 用户可以将自己锁仓额度赠与他人：transfer
+
+4. 用户可以允许其他人或者合约使用自己的额度：approve，transferFrom
+
+5. 时间到期后，用户可以从锁仓合约中取出自己的token: withdraw/withdrawTo
 ```
