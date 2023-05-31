@@ -76,7 +76,7 @@ contract TokenVesting is RoleAccess {
 
     /// @notice Update the funding source of vesting schedules
     /// @param newfunding The new address of the funding source account
-    function updateFunding(address newfunding) external onlyGranter {
+    function updateFunding(address newfunding) external onlyAdmin {
         funding = newfunding;
         emit Funding(funding);
     }
@@ -88,13 +88,25 @@ contract TokenVesting is RoleAccess {
     function newVestingSched(
         string calldata name,
         uint256 vestingTime
-    ) external onlyGranter returns (uint256) {
+    ) external onlyAdmin returns (uint256) {
         uint256 id = vestingSchedID.current();
         _vestingScheds[id] = VestingSched(id, name, vestingTime, 0, 0);
         vestingSchedID.increment();
 
         emit Vesting(id, name, vestingTime);
         return id;
+    }
+
+    function updateVestingSchedTime(
+        uint256 vestingSchedID_,
+        uint256 vestingTime
+    ) external onlyAdmin returns (bool) {
+        require(
+            _vestingScheds[vestingSchedID_].vestingTime > 0,
+            "Vesting does not exist"
+        );
+        _vestingScheds[vestingSchedID_].vestingTime = vestingTime;
+        return true;
     }
 
     function _grant(
@@ -353,10 +365,12 @@ contract TokenVesting is RoleAccess {
         }
 
         SoloVesting[] memory soloVestings_ = new SoloVesting[](length);
+        uint256 pos = 0;
         for (uint256 i = 0; i < vestingSchedID.current(); i++) {
             bytes32 index = keccak256(abi.encode(i, beneficiary));
             if (_soloVestings[index].grantAmount > 0) {
-                soloVestings_[i] = _soloVestings[index];
+                soloVestings_[pos] = _soloVestings[index];
+                pos += 1;
             }
         }
 

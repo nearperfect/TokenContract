@@ -1,6 +1,7 @@
 const { ethers, expect } = require("hardhat");
 const { expectRevert, expectEvent } = require("@openzeppelin/test-helpers");
 const { BigNumber } = require("ethers");
+const { current } = require("@openzeppelin/test-helpers/src/balance");
 
 const BN0 = new BigNumber.from("0");
 const BN18 = new BigNumber.from("18");
@@ -12,15 +13,13 @@ contract("TokenVesting", function () {
   let xToken;
   let tokenVesting;
   let currentTime;
-  let deployer;
-  let owner;
   let alice;
   let bob;
   let charlie;
   let darwin;
 
   beforeEach(async () => {
-    [deployer, owner, alice, bob, charlie, darwin] = await ethers.getSigners();
+    [alice, bob, charlie, darwin] = await ethers.getSigners();
     const XToken = await ethers.getContractFactory("XToken");
     xToken = await XToken.deploy("Test coin", "TCOIN", BNMAX);
     await xToken.mint(alice.address, BN1B);
@@ -509,9 +508,71 @@ contract("TokenVesting", function () {
       // revert
       await expectRevert(
         tokenVesting.connect(bob).updateFunding(darwin.address),
-        "Caller is not a granter"
+        "Caller is not a admin"
       );
     });
+
+    it("update vesting time", async () => {
+      var currentTime = Math.floor(new Date() / 1000);
+      var vestingScheds = await tokenVesting.allVestingScheds()
+      expect(vestingScheds.length).to.equal(3);
+      var vestingSched1 = await tokenVesting.vestingSched(0);
+      expect(vestingSched1.vestingTime).not.gt(currentTime);
+      var vestingSched2 = await tokenVesting.vestingSched(1);
+      expect(vestingSched2.vestingTime).not.gt(currentTime);
+      var vestingSched3 = await tokenVesting.vestingSched(2);
+      expect(vestingSched3.vestingTime).not.gt(currentTime);
+
+      // expect revert for bob
+      await expectRevert(
+        tokenVesting.connect(bob).updateVestingSchedTime(0, currentTime),
+        "Caller is not a admin"
+      );
+
+      // should work for alice
+      updatedTime = currentTime + 1000;
+      await tokenVesting.connect(alice).updateVestingSchedTime(0, updatedTime);
+      await tokenVesting.connect(alice).updateVestingSchedTime(1, updatedTime);
+      await tokenVesting.connect(alice).updateVestingSchedTime(2, updatedTime);
+
+      var vestingSched1 = await tokenVesting.vestingSched(0);
+      expect(vestingSched1.vestingTime).to.equal(updatedTime);
+      var vestingSched2 = await tokenVesting.vestingSched(1);
+      expect(vestingSched2.vestingTime).to.equal(updatedTime);
+      var vestingSched3 = await tokenVesting.vestingSched(2);
+      expect(vestingSched3.vestingTime).to.equal(updatedTime);
+    });
+
+    it("should return all solo vestings", async () => {
+      // setup solo vestings for bob
+      await tokenVesting.connect(alice).grant(
+            1,
+            [bob.address],
+            [1000]
+          );
+      await tokenVesting.connect(alice).grant(
+            2,
+            [bob.address],
+            [1000]
+          );
+
+      // check all
+      var soloVestings = await tokenVesting.allSoloVestings(bob.address);
+      expect(soloVestings.length).to.equal(2);
+      expect(soloVestings[0].grantAmount).to.equal(1000);
+      expect(soloVestings[0].withdrawAmount).to.equal(0);
+      expect(soloVestings[1].grantAmount).to.equal(1000);
+      expect(soloVestings[1].withdrawAmount).to.equal(0);
+
+      // check solo 
+      var soloVesting1 = await tokenVesting.soloVesting(1, bob.address);
+      expect(soloVesting1.grantAmount).to.equal(1000);
+      expect(soloVesting1.withdrawAmount).to.equal(0);
+      var soloVesting2 = await tokenVesting.soloVesting(2, bob.address);
+      expect(soloVesting2.grantAmount).to.equal(1000);
+      expect(soloVesting2.withdrawAmount).to.equal(0);
+    });
+
 
     it("only granter can call grant", async () => {
       await expectRevert(
@@ -526,7 +587,7 @@ contract("TokenVesting", function () {
       );
 
       await expectRevert(
-        tokenVesting.connect(alice).grantGranter(bob.address),
+        tokenVesting.connect(bob).grantGranter(bob.address),
         "Caller is not a admin"
       );
 
