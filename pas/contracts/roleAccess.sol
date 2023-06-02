@@ -48,39 +48,35 @@ contract RoleAccess is AccessControlEnumerable {
 
     function getRoles() external pure returns (Role[] memory) {
         Role[] memory result = new Role[](5);
-        result[1] = Role(ADMIN_ROLE, "admin for the contract");
-        result[2] = Role(MINTER_ROLE, "minter can mint new coins");
-        result[3] = Role(BURNER_ROLE, "burner can burn coins");
-        result[4] = Role(GRANTER_ROLE, "granter can burn coins");
-        result[5] = Role(BLACKLISTER_ROLE, "blacklister can update blacklist");
+        result[0] = Role(ADMIN_ROLE, "admin for the contract");
+        result[1] = Role(MINTER_ROLE, "minter can mint new coins");
+        result[2] = Role(BURNER_ROLE, "burner can burn coins");
+        result[3] = Role(GRANTER_ROLE, "granter can burn coins");
+        result[4] = Role(BLACKLISTER_ROLE, "blacklister can update blacklist");
         return result;
     }
 
-    function addRoleMember(bytes32 role, address member)
-        external
-        onlyAdmin
-        returns (bool)
-    {
+    function addRoleMember(
+        bytes32 role,
+        address member
+    ) external onlyAdmin returns (bool) {
         grantRole(role, member);
         return true;
     }
 
-    function removeRoleMember(bytes32 role, address member)
-        external
-        onlyAdmin
-        returns (bool)
-    {
+    function removeRoleMember(
+        bytes32 role,
+        address member
+    ) external onlyAdmin returns (bool) {
         if (hasRole(role, member)) {
             revokeRole(role, member);
         }
         return true;
     }
 
-    function getRoleMembers(bytes32 role)
-        external
-        view
-        returns (address[] memory)
-    {
+    function getRoleMembers(
+        bytes32 role
+    ) external view returns (address[] memory) {
         uint256 count = getRoleMemberCount(role);
         address[] memory members_ = new address[](count);
         for (uint256 index = 0; index < count; index++) {
@@ -128,21 +124,17 @@ contract RoleAccess is AccessControlEnumerable {
     }
 
     // assign blacklister role to another EOA or smart contract
-    function grantBlacklister(address blacklister)
-        external
-        onlyAdmin
-        returns (bool)
-    {
+    function grantBlacklister(
+        address blacklister
+    ) external onlyAdmin returns (bool) {
         grantRole(BLACKLISTER_ROLE, blacklister);
         return true;
     }
 
     // revoke blacklister role to another EOA or smart contract
-    function revokeBlacklister(address blacklister)
-        external
-        onlyAdmin
-        returns (bool)
-    {
+    function revokeBlacklister(
+        address blacklister
+    ) external onlyAdmin returns (bool) {
         revokeRole(BLACKLISTER_ROLE, blacklister);
         return true;
     }

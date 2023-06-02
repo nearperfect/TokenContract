@@ -48,11 +48,11 @@ contract RoleAccess is AccessControlEnumerable {
 
     function getRoles() external pure returns (Role[] memory) {
         Role[] memory result = new Role[](5);
-        result[1] = Role(ADMIN_ROLE, "admin for the contract");
-        result[2] = Role(MINTER_ROLE, "minter can mint new coins");
-        result[3] = Role(BURNER_ROLE, "burner can burn coins");
-        result[4] = Role(GRANTER_ROLE, "granter can burn coins");
-        result[5] = Role(BLACKLISTER_ROLE, "blacklister can update blacklist");
+        result[0] = Role(ADMIN_ROLE, "admin for the contract");
+        result[1] = Role(MINTER_ROLE, "minter can mint new coins");
+        result[2] = Role(BURNER_ROLE, "burner can burn coins");
+        result[3] = Role(GRANTER_ROLE, "granter can burn coins");
+        result[4] = Role(BLACKLISTER_ROLE, "blacklister can update blacklist");
         return result;
     }
 
