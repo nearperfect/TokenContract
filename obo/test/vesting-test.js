@@ -38,13 +38,8 @@ contract("TokenVesting", function () {
   describe("token vesting schedule functionality", () => {
     it("create new vesting schedule", async () => {
       currentTime = Math.floor(new Date() / 1000);
-      const receipt = await tokenVesting.newVestingSched(
-        "vesting 12 month",
-        currentTime
-      );
-      expect(receipt)
-        .to.emit(tokenVesting, "Vesting")
-        .withArgs("vesting 12 month", currentTime);
+      await expect(tokenVesting.newVestingSched("vesting 12 month", currentTime))
+      .to.emit(tokenVesting, "Vesting").withArgs(3, "vesting 12 month", currentTime);
       const id = await tokenVesting.vestingSchedID();
       expect(id).to.be.equal(4);
 
@@ -81,32 +76,23 @@ contract("TokenVesting", function () {
     });
 
     it("grant new vesting", async () => {
-      const receipt0 = await tokenVesting.grant(
+      await expect(tokenVesting.grant(
         0,
         [bob.address, charlie.address, darwin.address],
         [1000, 1000, 1000]
-      );
-      const receipt1 = await tokenVesting.grant(
+      )).to.emit(tokenVesting, "Grant").withArgs(0, bob.address, 1000);
+
+      await expect(tokenVesting.grant(
         1,
         [bob.address, charlie.address, darwin.address],
         [2000, 2000, 2000]
-      );
-      const receipt2 = await tokenVesting.grant(
+      )).to.emit(tokenVesting, "Grant").withArgs(1, charlie.address, 2000);
+      
+      await expect(tokenVesting.grant(
         2,
         [bob.address, charlie.address, darwin.address],
         [3000, 3000, 3000]
-      );
-
-      // check events
-      expect(receipt0)
-        .to.emit(tokenVesting, "Grant")
-        .withArgs(0, bob.address, 1000);
-      expect(receipt0)
-        .to.emit(tokenVesting, "Grant")
-        .withArgs(0, charlie.address, 1000);
-      expect(receipt0)
-        .to.emit(tokenVesting, "Grant")
-        .withArgs(0, darwin.address, 1000);
+      )).to.emit(tokenVesting, "Grant").withArgs(2, darwin.address, 3000);
 
       var balance = await xToken.balanceOf(tokenVesting.address);
       expect(balance).to.equal(18000);
@@ -383,18 +369,12 @@ contract("TokenVesting", function () {
       expect(balance).to.equal(0);
 
       // withdraw bob from vesting 0
-      const receipt0 = await tokenVesting.connect(bob).withdraw(0, 200);
+      await expect(tokenVesting.connect(bob).withdraw(0, 200))
+      .to.emit(tokenVesting, "Withdraw").withArgs(0, bob.address, bob.address, 200);
       balance = await xToken.balanceOf(bob.address);
       expect(balance).to.equal(200);
-      expect(receipt0)
-        .to.emit(tokenVesting, "Withdraw")
-        .withArgs(0, bob.address, bob.address, 200);
-      const receipt1 = await tokenVesting
-        .connect(bob)
-        .withdrawTo(0, 200, charlie.address);
-      expect(receipt1)
-        .to.emit(tokenVesting, "Withdraw")
-        .withArgs(0, bob.address, charlie.address, 200);
+      await expect(tokenVesting.connect(bob).withdrawTo(0, 200, charlie.address))
+      .to.emit(tokenVesting, "Withdraw").withArgs(0, bob.address, charlie.address, 200);
 
       var vestingSched = await tokenVesting.vestingSched(0);
       expect(vestingSched.grantAmount).to.equal(3000);
@@ -479,10 +459,8 @@ contract("TokenVesting", function () {
       );
   
       // transfer from bob to charlie in vesting 0
-      const receipt = await tokenVesting.connect(bob).transfer(darwin.address, 0, 200);
-      expect(receipt)
-        .emit(tokenVesting, "Transfer")
-        .withArgs(0, bob.address, darwin.address, 200);
+      await expect(tokenVesting.connect(bob).transfer(darwin.address, 0, 200))
+      .emit(tokenVesting, "Transfer").withArgs(0, bob.address, darwin.address, 200);
       
       var vestingSched = await tokenVesting.vestingSched(0);
       expect(vestingSched.grantAmount).to.equal(3000);
@@ -606,15 +584,11 @@ contract("TokenVesting", function () {
       expect(soloVesting.withdrawAmount).to.equal(0);
 
       // transfer from bob to alice in vesting 0
-      const receipt1 = await tokenVesting.connect(alice).transferFrom(bob.address, alice.address, 0, 200);
-      expect(receipt1)
-        .emit(tokenVesting, "Transfer")
-        .withArgs(0, bob.address, alice.address, 200);
+      await expect(tokenVesting.connect(alice).transferFrom(bob.address, alice.address, 0, 200))
+      .to.emit(tokenVesting, "Transfer").withArgs(0, bob.address, alice.address, 200);
       // transfer from bob to darwin by alice in vesting 0
-      const receipt2 = await tokenVesting.connect(alice).transferFrom(bob.address, darwin.address, 0, 200);
-      expect(receipt2)
-        .emit(tokenVesting, "Transfer")
-        .withArgs(0, bob.address, alice.address, 200);
+      await expect(tokenVesting.connect(alice).transferFrom(bob.address, darwin.address, 0, 200))
+      .to.emit(tokenVesting, "Transfer").withArgs(0, bob.address, darwin.address, 200);
       
       var vestingSched = await tokenVesting.vestingSched(0);
       expect(vestingSched.grantAmount).to.equal(3000);
@@ -626,6 +600,10 @@ contract("TokenVesting", function () {
 
       soloVesting = await tokenVesting.soloVesting(0, alice.address);
       expect(soloVesting.grantAmount).to.equal(200);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+
+      soloVesting = await tokenVesting.soloVesting(0, darwin.address);
+      expect(soloVesting.grantAmount).to.equal(1200);
       expect(soloVesting.withdrawAmount).to.equal(0);
 
       // transfer from bob to alice will revert if amount > approved
