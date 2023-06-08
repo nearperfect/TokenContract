@@ -113,3 +113,5 @@ playground/
 bin/
 
 *yarn.lock
+
+obo/deployments/localhost/solcInputs/
