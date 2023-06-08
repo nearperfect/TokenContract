@@ -162,7 +162,13 @@ contract TokenVesting is RoleAccess {
             emit Grant(vestingSchedID_, beneficiary, grantAmount);
         }
         _vestingScheds[vestingSchedID_].grantAmount += grantTotal;
-        return IERC20(token).transferFrom(funding, address(this), grantTotal);
+        bool result = IERC20(token).transferFrom(
+            funding,
+            address(this),
+            grantTotal
+        );
+        require(result, "Grant failed with token transfer");
+        return true;
     }
 
     /// @notice Withdraw granted tokens into caller's address
@@ -213,7 +219,10 @@ contract TokenVesting is RoleAccess {
 
         // send the toke
         emit Withdraw(vestingSchedID_, _msgSender(), beneficiary, amount);
-        return IERC20(token).transfer(beneficiary, amount);
+        bool result = IERC20(token).transfer(beneficiary, amount);
+        require(result, "Withdrawal failed with token transfer");
+
+        return true;
     }
 
     /// @notice Allow the spender to transfer up to certain amount of token from owner's vesting
@@ -359,7 +368,7 @@ contract TokenVesting is RoleAccess {
         uint256 length = 0;
         for (uint256 i = 0; i < vestingSchedID.current(); i++) {
             bytes32 index = keccak256(abi.encode(i, beneficiary));
-            if (_soloVestings[index].grantAmount > 0) {
+            if (_soloVestings[index].beneficiary != address(0)) {
                 length += 1;
             }
         }
@@ -368,7 +377,7 @@ contract TokenVesting is RoleAccess {
         uint256 pos = 0;
         for (uint256 i = 0; i < vestingSchedID.current(); i++) {
             bytes32 index = keccak256(abi.encode(i, beneficiary));
-            if (_soloVestings[index].grantAmount > 0) {
+            if (_soloVestings[index].beneficiary != address(0)) {
                 soloVestings_[pos] = _soloVestings[index];
                 pos += 1;
             }

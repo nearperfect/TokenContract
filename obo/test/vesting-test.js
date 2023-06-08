@@ -7,6 +7,7 @@ const BN0 = new BigNumber.from("0");
 const BN18 = new BigNumber.from("18");
 const BN100 = new BigNumber.from("100");
 const BN1B = new BigNumber.from("1000000000");
+const BN2B = new BigNumber.from("2000000000");
 const BNMAX = new BigNumber.from("1000000000000000000000000000");
 
 contract("TokenVesting", function () {
@@ -341,8 +342,8 @@ contract("TokenVesting", function () {
         "Vesting does not exist"
       );
 
+      // not enough allowance: 100 < 1000
       await xToken.connect(alice).approve(tokenVesting.address, BN100);
-
       await expectRevert(
         tokenVesting.grant(
           0,
@@ -351,6 +352,18 @@ contract("TokenVesting", function () {
         ),
         "ERC20: insufficient allowance"
       );
+
+      // alice balance 1B < 2B needed
+      await xToken.connect(alice).approve(tokenVesting.address, BN2B);
+      await expectRevert(
+        tokenVesting.grant(
+          0,
+          [bob.address],
+          [BN2B]
+        ),
+        "ERC20: transfer amount exceeds balance"
+      );
+
     });
 
     it("withdraw normally", async () => {
@@ -527,6 +540,12 @@ contract("TokenVesting", function () {
         "Not sufficient fund for transfer"
       );
 
+      // transfer if net amount is not enough for bob
+      await tokenVesting.connect(bob).withdraw(0, 900);
+      await expectRevert(tokenVesting.connect(bob).transfer(charlie.address, 0, 200),
+        "Not sufficient fund for transfer"
+      );
+
       // transfer 0
       await expectRevert(
         tokenVesting.connect(bob).transfer(charlie.address, 0, 0),
@@ -653,6 +672,111 @@ contract("TokenVesting", function () {
         tokenVesting.connect(charlie).transferFrom(bob.address, alice.address, 0, 100),
         "Insufficient allowance"
       )
+    });
+
+    it("multiple grant/transfer/withdraw operations", async ()=>{
+      await tokenVesting.grant(
+        0,
+        [bob.address],
+        [1000]
+      );
+      balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(1000);
+
+      // withdraw 200 and check balance
+      await tokenVesting.connect(bob).withdraw(0, 200);
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(1000);
+      expect(soloVesting.withdrawAmount).to.equal(200);
+
+      balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(800);
+      balance = await xToken.balanceOf(bob.address);
+      expect(balance).to.equal(200);
+
+      // withdraw 200 and check balance
+      await tokenVesting.connect(bob).withdraw(0, 200);
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(1000);
+      expect(soloVesting.withdrawAmount).to.equal(400);
+
+      balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(600);
+      balance = await xToken.balanceOf(bob.address);
+      expect(balance).to.equal(400);
+
+      // withdraw the rest and check balance
+      await tokenVesting.connect(bob).withdraw(0, 600);
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(1000);
+      expect(soloVesting.withdrawAmount).to.equal(1000);
+
+      balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(0);
+      balance = await xToken.balanceOf(bob.address);
+      expect(balance).to.equal(1000);
+
+      // grant bob 2000 again
+      await tokenVesting.grant(
+        0,
+        [bob.address],
+        [2000]
+      );
+      balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(2000);
+
+      // check balance
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(3000);
+      expect(soloVesting.withdrawAmount).to.equal(1000);
+
+      // withdraw 200 and check balance
+      await tokenVesting.connect(bob).withdraw(0, 200);
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(3000);
+      expect(soloVesting.withdrawAmount).to.equal(1200);
+
+      // withdraw 300 and check balance
+      await tokenVesting.connect(bob).withdraw(0, 300);
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(3000);
+      expect(soloVesting.withdrawAmount).to.equal(1500);
+
+      // transfer 500 to darwin
+      await tokenVesting.connect(bob).transfer(darwin.address, 0, 500);
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(2500);
+      expect(soloVesting.withdrawAmount).to.equal(1500);
+
+      soloVesting = await tokenVesting.soloVesting(0, darwin.address);
+      expect(soloVesting.grantAmount).to.equal(500);
+      expect(soloVesting.withdrawAmount).to.equal(0);
+
+      balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(1500);
+      balance = await xToken.balanceOf(bob.address);
+      expect(balance).to.equal(1500);
+      balance = await xToken.balanceOf(darwin.address);
+      expect(balance).to.equal(0);
+
+      // withdraw all from bob and darwin
+      await tokenVesting.connect(bob).withdraw(0, 1000);
+      await tokenVesting.connect(darwin).withdraw(0, 500);
+
+      soloVesting = await tokenVesting.soloVesting(0, bob.address);
+      expect(soloVesting.grantAmount).to.equal(2500);
+      expect(soloVesting.withdrawAmount).to.equal(2500);
+
+      soloVesting = await tokenVesting.soloVesting(0, darwin.address);
+      expect(soloVesting.grantAmount).to.equal(500);
+      expect(soloVesting.withdrawAmount).to.equal(500);
+
+      balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(0);
+      balance = await xToken.balanceOf(bob.address);
+      expect(balance).to.equal(2500);
+      balance = await xToken.balanceOf(darwin.address);
+      expect(balance).to.equal(500);
     });
 
     it("update funding normally", async () => {
