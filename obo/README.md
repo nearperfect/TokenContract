@@ -55,7 +55,7 @@ allowance：查询approve后的额度
 
 allVestingScheds：返回所有的锁仓计划
 
-vestingSched：返回单个锁仓计划 allSoloVestings：返回某个地址的所有锁仓计划
+vestingSched：返回单个锁仓计划allSoloVestings：返回某个地址的所有锁仓计划
 
 soloVesting：返回某个地址的某个锁仓计划
 ```

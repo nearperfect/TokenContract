@@ -661,6 +661,11 @@ contract("TokenVesting", function () {
       balance = await xToken.balanceOf(tokenVesting.address);
       expect(balance).to.equal(1000);
 
+      // check total vesting
+      var vestingSched = await tokenVesting.vestingSched(0);
+      expect(vestingSched.grantAmount).to.equal(1000);
+      expect(vestingSched.withdrawAmount).to.equal(0);
+
       // withdraw 200 and check balance
       await tokenVesting.connect(bob).withdraw(0, 200);
       soloVesting = await tokenVesting.soloVesting(0, bob.address);
@@ -694,6 +699,10 @@ contract("TokenVesting", function () {
       balance = await xToken.balanceOf(bob.address);
       expect(balance).to.equal(1000);
 
+      vestingSched = await tokenVesting.vestingSched(0);
+      expect(vestingSched.grantAmount).to.equal(1000);
+      expect(vestingSched.withdrawAmount).to.equal(1000);
+
       // grant bob 2000 again
       await tokenVesting.grant(
         0,
@@ -702,6 +711,10 @@ contract("TokenVesting", function () {
       );
       balance = await xToken.balanceOf(tokenVesting.address);
       expect(balance).to.equal(2000);
+
+      vestingSched = await tokenVesting.vestingSched(0);
+      expect(vestingSched.grantAmount).to.equal(3000);
+      expect(vestingSched.withdrawAmount).to.equal(1000);
 
       // check balance
       soloVesting = await tokenVesting.soloVesting(0, bob.address);
@@ -755,6 +768,10 @@ contract("TokenVesting", function () {
       expect(balance).to.equal(2500);
       balance = await xToken.balanceOf(darwin.address);
       expect(balance).to.equal(500);
+
+      vestingSched = await tokenVesting.vestingSched(0);
+      expect(vestingSched.grantAmount).to.equal(3000);
+      expect(vestingSched.withdrawAmount).to.equal(3000);
     });
 
     it("update funding normally", async () => {
