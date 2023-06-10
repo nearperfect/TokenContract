@@ -307,6 +307,36 @@ contract("TokenVesting", function () {
 
     })
 
+    it("update vesting time", async () => {
+      currentTime = Math.floor(new Date() / 1000);
+      await tokenVesting.updateVestingSchedTime(0, currentTime+100);
+      await tokenVesting.grant(0,[bob.address],[1000]);
+
+      // check bob's grant
+      const bobVestings = await tokenVesting.allSoloVestings(bob.address);
+      expect(bobVestings[0].vestingID).to.equal(0);
+      expect(bobVestings[0].beneficiary).to.equal(bob.address);
+      expect(bobVestings[0].grantAmount).to.equal(1000);
+      expect(bobVestings[0].withdrawAmount).to.equal(0);
+
+      // bob can not withdraw
+      await expectRevert(
+        tokenVesting.connect(bob).withdraw(0, 1000),
+        "Can not withdraw before vesting starts"
+      );
+
+      // update vesting sched time
+      await tokenVesting.updateVestingSchedTime(0, currentTime-100);
+      await tokenVesting.connect(bob).withdraw(0, 1000);
+
+      // check bob's grant again
+      const bobVestings2 = await tokenVesting.allSoloVestings(bob.address);
+      expect(bobVestings2[0].vestingID).to.equal(0);
+      expect(bobVestings2[0].beneficiary).to.equal(bob.address);
+      expect(bobVestings2[0].grantAmount).to.equal(1000);
+      expect(bobVestings2[0].withdrawAmount).to.equal(1000);
+    });
+
     it("grant new vesting revert: vesting does not exist", async () => {
       await expectRevert(
         tokenVesting.grant(
