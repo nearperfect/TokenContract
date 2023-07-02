@@ -10,7 +10,7 @@ const BN1B = new BigNumber.from("1000000000");
 const BN2B = new BigNumber.from("2000000000");
 const BNMAX = new BigNumber.from("1000000000000000000000000000");
 
-contract("TokenVesting", function () {
+contract("TokenVestingWithRecall", function () {
   let xToken;
   let tokenVesting;
   let currentTime;
@@ -25,7 +25,7 @@ contract("TokenVesting", function () {
     xToken = await XToken.deploy("Test coin", "TCOIN", BNMAX);
     await xToken.mint(alice.address, BN1B);
 
-    const TokenVesting = await ethers.getContractFactory("TokenVesting");
+    const TokenVesting = await ethers.getContractFactory("TokenVestingWithRecall");
     tokenVesting = await TokenVesting.deploy(xToken.address, alice.address);
     await xToken.connect(alice).approve(tokenVesting.address, BN1B);
 
@@ -39,7 +39,7 @@ contract("TokenVesting", function () {
     it("create new vesting schedule", async () => {
       currentTime = Math.floor(new Date() / 1000);
       await expect(tokenVesting.newVestingSched("vesting 12 month", currentTime))
-      .to.emit(tokenVesting, "Vesting").withArgs(3, "vesting 12 month", currentTime);
+        .to.emit(tokenVesting, "Vesting").withArgs(3, "vesting 12 month", currentTime);
       const id = await tokenVesting.vestingSchedID();
       expect(id).to.be.equal(4);
 
@@ -87,7 +87,7 @@ contract("TokenVesting", function () {
         [bob.address, charlie.address, darwin.address],
         [2000, 2000, 2000]
       )).to.emit(tokenVesting, "Grant").withArgs(1, charlie.address, 2000);
-      
+
       await expect(tokenVesting.grant(
         2,
         [bob.address, charlie.address, darwin.address],
@@ -155,7 +155,7 @@ contract("TokenVesting", function () {
       expect(vestingSched.withdrawAmount).to.equal(0);
     });
 
-    it("triple grant should have triple amounts", async ()=> {
+    it("triple grant should have triple amounts", async () => {
       await tokenVesting.grant(
         0,
         [bob.address, charlie.address, darwin.address],
@@ -215,7 +215,7 @@ contract("TokenVesting", function () {
       );
     });
 
-    it("multiple scheds and multiple users", async ()=>{
+    it("recall vesting", async () => {
       await tokenVesting.grant(
         0,
         [bob.address, charlie.address, darwin.address],
@@ -236,6 +236,148 @@ contract("TokenVesting", function () {
         [bob.address, charlie.address, darwin.address],
         [2000, 3000, 2000]
       );
+
+      // check xtoken balance of the contract
+      var balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(20000);
+      // check xtoken balance of bob
+      balance = await xToken.balanceOf(bob.address);
+      expect(balance).to.equal(0);
+
+      // check bob vestings
+      var bobVestings = await tokenVesting.allSoloVestings(bob.address);
+      expect(bobVestings[0].vestingID).to.equal(0);
+      expect(bobVestings[0].beneficiary).to.equal(bob.address);
+      expect(bobVestings[0].grantAmount).to.equal(2000);
+      expect(bobVestings[0].withdrawAmount).to.equal(0);
+      expect(bobVestings[1].vestingID).to.equal(1);
+      expect(bobVestings[1].beneficiary).to.equal(bob.address);
+      expect(bobVestings[1].grantAmount).to.equal(4000);
+      expect(bobVestings[1].withdrawAmount).to.equal(0);
+
+      // recall vesting from bob
+      await tokenVesting.recallVesting(0, bob.address, bob.address);
+
+      // check xtoken balance of the contract
+      balance = await xToken.balanceOf(tokenVesting.address);
+      expect(balance).to.equal(18000);
+      // check xtoken balance of bob
+      balance = await xToken.balanceOf(bob.address);
+      expect(balance).to.equal(2000);
+
+      // check bob vestings
+      var bobVestings = await tokenVesting.allSoloVestings(bob.address);
+      expect(bobVestings[0].vestingID).to.equal(0);
+      expect(bobVestings[0].beneficiary).to.equal(bob.address);
+      expect(bobVestings[0].grantAmount).to.equal(2000);
+      expect(bobVestings[0].withdrawAmount).to.equal(2000);
+      expect(bobVestings[1].vestingID).to.equal(1);
+      expect(bobVestings[1].beneficiary).to.equal(bob.address);
+      expect(bobVestings[1].grantAmount).to.equal(4000);
+      expect(bobVestings[1].withdrawAmount).to.equal(0);
+
+
+      // check total sched grant and withdraw
+      var vestingSched = await tokenVesting.vestingSched(0);
+      expect(vestingSched.grantAmount).to.equal(6000);
+      expect(vestingSched.withdrawAmount).to.equal(2000);
+      vestingSched1 = await tokenVesting.vestingSched(1);
+      expect(vestingSched1.grantAmount).to.equal(14000);
+      expect(vestingSched1.withdrawAmount).to.equal(0);
+
+      // recall vesting sched 0 from bob to alice
+      await expectRevert(
+        tokenVesting.recallVesting(0, bob.address, bob.address),
+        "Recall amount should be non-zero"
+      );
+
+      // alice token balance before
+      balanceBefore = await xToken.balanceOf(alice.address);
+      // 1000000000 - 20000 = 999980000 as alice fund the vesting contract
+      expect(balanceBefore).to.equal(999980000);
+
+      // recall revert because of privilege
+      await expectRevert(
+        tokenVesting.connect(darwin).recallVesting(0, bob.address, bob.address),
+        "Caller is not a admin"
+      );
+      // recall vesting sched 1 from bob to alice
+      await tokenVesting.recallVesting(1, bob.address, alice.address);
+
+      // check xtoken balance of the contract
+      balance = await xToken.balanceOf(tokenVesting.address);
+      // 20000 - 2000 - 4000 = 14000
+      expect(balance).to.equal(14000);
+      // check xtoken balance of alice
+      balanceAfter = await xToken.balanceOf(alice.address);
+      expect(balanceAfter).to.equal(999984000);
+      // check solo vestings of bob
+      bobVestings = await tokenVesting.allSoloVestings(bob.address);
+      expect(bobVestings[0].vestingID).to.equal(0);
+      expect(bobVestings[0].beneficiary).to.equal(bob.address);
+      expect(bobVestings[0].grantAmount).to.equal(2000);
+      expect(bobVestings[0].withdrawAmount).to.equal(2000);
+      expect(bobVestings[1].vestingID).to.equal(1);
+      expect(bobVestings[1].beneficiary).to.equal(bob.address);
+      expect(bobVestings[1].grantAmount).to.equal(4000);
+      expect(bobVestings[1].withdrawAmount).to.equal(4000);
+    });
+
+    it("multiple scheds and multiple users", async () => {
+      await tokenVesting.grant(
+        0,
+        [bob.address, charlie.address, darwin.address],
+        [1000, 1000, 1000]
+      );
+      await tokenVesting.grant(
+        0,
+        [bob.address, charlie.address, darwin.address],
+        [1000, 1000, 1000]
+      );
+      await tokenVesting.grant(
+        1,
+        [bob.address, charlie.address, darwin.address],
+        [2000, 3000, 2000]
+      );
+      await tokenVesting.grant(
+        1,
+        [bob.address, charlie.address, darwin.address],
+        [2000, 3000, 2000]
+      );
+
+      // check allSoloVestingsForSched()
+      const soloVestingsLength = await tokenVesting.soloVestingsLength(0)
+      expect(soloVestingsLength).to.equal(3);
+      const allSoloVestingsForSched = await tokenVesting.allSoloVestingsForSched(0)
+      expect(allSoloVestingsForSched[0].vestingID).to.equal(0);
+      expect(allSoloVestingsForSched[0].beneficiary).to.equal(bob.address);
+      expect(allSoloVestingsForSched[0].grantAmount).to.equal(2000);
+      expect(allSoloVestingsForSched[0].withdrawAmount).to.equal(0);
+      expect(allSoloVestingsForSched[1].vestingID).to.equal(0);
+      expect(allSoloVestingsForSched[1].beneficiary).to.equal(charlie.address);
+      expect(allSoloVestingsForSched[1].grantAmount).to.equal(2000);
+      expect(allSoloVestingsForSched[1].withdrawAmount).to.equal(0);
+      expect(allSoloVestingsForSched[2].vestingID).to.equal(0);
+      expect(allSoloVestingsForSched[2].beneficiary).to.equal(darwin.address);
+      expect(allSoloVestingsForSched[2].grantAmount).to.equal(2000);
+      expect(allSoloVestingsForSched[2].withdrawAmount).to.equal(0);
+
+      const soloVestingsLength1 = await tokenVesting.soloVestingsLength(1)
+      expect(soloVestingsLength1).to.equal(3);
+      const allSoloVestingsForSched1 = await tokenVesting.allSoloVestingsForSched(1)
+      expect(allSoloVestingsForSched1[0].vestingID).to.equal(1);
+      expect(allSoloVestingsForSched1[0].beneficiary).to.equal(bob.address);
+      expect(allSoloVestingsForSched1[0].grantAmount).to.equal(4000);
+      expect(allSoloVestingsForSched1[0].withdrawAmount).to.equal(0);
+      expect(allSoloVestingsForSched1[1].vestingID).to.equal(1);
+      expect(allSoloVestingsForSched1[1].beneficiary).to.equal(charlie.address);
+      expect(allSoloVestingsForSched1[1].grantAmount).to.equal(6000);
+      expect(allSoloVestingsForSched1[1].withdrawAmount).to.equal(0);
+      expect(allSoloVestingsForSched1[2].vestingID).to.equal(1);
+      expect(allSoloVestingsForSched1[2].beneficiary).to.equal(darwin.address);
+      expect(allSoloVestingsForSched1[2].grantAmount).to.equal(4000);
+      expect(allSoloVestingsForSched1[2].withdrawAmount).to.equal(0);
+
 
       const bobVestings = await tokenVesting.allSoloVestings(bob.address);
       expect(bobVestings[0].vestingID).to.equal(0);
@@ -309,8 +451,8 @@ contract("TokenVesting", function () {
 
     it("update vesting time", async () => {
       currentTime = Math.floor(new Date() / 1000);
-      await tokenVesting.updateVestingSchedTime(0, currentTime+100);
-      await tokenVesting.grant(0,[bob.address],[1000]);
+      await tokenVesting.updateVestingSchedTime(0, currentTime + 1000);
+      await tokenVesting.grant(0, [bob.address], [1000]);
 
       // check bob's grant
       const bobVestings = await tokenVesting.allSoloVestings(bob.address);
@@ -326,7 +468,7 @@ contract("TokenVesting", function () {
       );
 
       // update vesting sched time
-      await tokenVesting.updateVestingSchedTime(0, currentTime-100);
+      await tokenVesting.updateVestingSchedTime(0, currentTime - 1000);
       await tokenVesting.connect(bob).withdraw(0, 1000);
 
       // check bob's grant again
@@ -400,11 +542,11 @@ contract("TokenVesting", function () {
 
       // withdraw bob from vesting 0
       await expect(tokenVesting.connect(bob).withdraw(0, 200))
-      .to.emit(tokenVesting, "Withdraw").withArgs(0, bob.address, bob.address, 200);
+        .to.emit(tokenVesting, "Withdraw").withArgs(0, bob.address, bob.address, 200);
       balance = await xToken.balanceOf(bob.address);
       expect(balance).to.equal(200);
       await expect(tokenVesting.connect(bob).withdrawTo(0, 200, charlie.address))
-      .to.emit(tokenVesting, "Withdraw").withArgs(0, bob.address, charlie.address, 200);
+        .to.emit(tokenVesting, "Withdraw").withArgs(0, bob.address, charlie.address, 200);
 
       var vestingSched = await tokenVesting.vestingSched(0);
       expect(vestingSched.grantAmount).to.equal(3000);
@@ -487,11 +629,11 @@ contract("TokenVesting", function () {
         [bob.address, charlie.address, darwin.address],
         [2000, 2000, 2000]
       );
-  
+
       // transfer from bob to charlie in vesting 0
       await expect(tokenVesting.connect(bob).transfer(darwin.address, 0, 200))
-      .emit(tokenVesting, "Transfer").withArgs(0, bob.address, darwin.address, 200);
-      
+        .emit(tokenVesting, "Transfer").withArgs(0, bob.address, darwin.address, 200);
+
       var vestingSched = await tokenVesting.vestingSched(0);
       expect(vestingSched.grantAmount).to.equal(3000);
       expect(vestingSched.withdrawAmount).to.equal(0);
@@ -588,7 +730,7 @@ contract("TokenVesting", function () {
       await tokenVesting.connect(bob).approve(alice.address, 1, 2000);
       await tokenVesting.connect(charlie).approve(alice.address, 1, 2000);
       await tokenVesting.connect(darwin).approve(alice.address, 1, 2000);
-      
+
       // check alice allowance vesting 0
       var allowance = await tokenVesting.allowance(bob.address, alice.address, 0);
       expect(allowance).to.equal(1000);
@@ -615,11 +757,11 @@ contract("TokenVesting", function () {
 
       // transfer from bob to alice in vesting 0
       await expect(tokenVesting.connect(alice).transferFrom(bob.address, alice.address, 0, 200))
-      .to.emit(tokenVesting, "Transfer").withArgs(0, bob.address, alice.address, 200);
+        .to.emit(tokenVesting, "Transfer").withArgs(0, bob.address, alice.address, 200);
       // transfer from bob to darwin by alice in vesting 0
       await expect(tokenVesting.connect(alice).transferFrom(bob.address, darwin.address, 0, 200))
-      .to.emit(tokenVesting, "Transfer").withArgs(0, bob.address, darwin.address, 200);
-      
+        .to.emit(tokenVesting, "Transfer").withArgs(0, bob.address, darwin.address, 200);
+
       var vestingSched = await tokenVesting.vestingSched(0);
       expect(vestingSched.grantAmount).to.equal(3000);
       expect(vestingSched.withdrawAmount).to.equal(0);
@@ -682,7 +824,7 @@ contract("TokenVesting", function () {
       )
     });
 
-    it("multiple grant/transfer/withdraw operations", async ()=>{
+    it("multiple grant/transfer/withdraw operations", async () => {
       await tokenVesting.grant(
         0,
         [bob.address],
@@ -852,15 +994,15 @@ contract("TokenVesting", function () {
     it("should return all solo vestings", async () => {
       // setup solo vestings for bob
       await tokenVesting.connect(alice).grant(
-            1,
-            [bob.address],
-            [1000]
-          );
+        1,
+        [bob.address],
+        [1000]
+      );
       await tokenVesting.connect(alice).grant(
-            2,
-            [bob.address],
-            [1000]
-          );
+        2,
+        [bob.address],
+        [1000]
+      );
 
       // check all
       var soloVestings = await tokenVesting.allSoloVestings(bob.address);

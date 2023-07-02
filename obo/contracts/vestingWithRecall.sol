@@ -54,12 +54,20 @@ contract TokenVestingWithRecall is RoleAccess {
         address indexed spender,
         uint256 amount
     );
+    event Recall(
+        uint256 indexed vestingSchedID,
+        address indexed from,
+        address indexed receipient,
+        uint256 amount
+    );
 
     address public token;
     address public funding;
     Counters.Counter public vestingSchedID;
     mapping(uint256 => VestingSched) private _vestingScheds;
     mapping(bytes32 => SoloVesting) private _soloVestings;
+    mapping(uint256 => address[]) private _soloVestingKeys;
+
     // scheduleID => owner => spender => amount
     mapping(uint256 => mapping(address => mapping(address => uint256)))
         private _allowances;
@@ -72,6 +80,27 @@ contract TokenVestingWithRecall is RoleAccess {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(ADMIN_ROLE, _msgSender());
         _setupRole(GRANTER_ROLE, _msgSender());
+    }
+
+    function soloVestingsLength(
+        uint256 sched
+    ) public view returns (uint256) {
+        return _soloVestingKeys[sched].length;
+    }
+
+    function allSoloVestingsForSched(
+        uint256 sched
+    ) external view returns (SoloVesting[] memory) {
+        SoloVesting[] memory soloVestings = new SoloVesting[](
+            soloVestingsLength(sched)
+        );
+        for (uint256 i = 0; i < soloVestingsLength(sched); i++) {
+            bytes32 indexTo = keccak256(
+                abi.encode(sched, _soloVestingKeys[sched][i])
+            );
+            soloVestings[i] = _soloVestings[indexTo];
+        }
+        return soloVestings;
     }
 
     /// @notice Update the funding source of vesting schedules
@@ -127,6 +156,7 @@ contract TokenVestingWithRecall is RoleAccess {
                 amount,
                 0
             );
+            _soloVestingKeys[vestingSchedID_].push(beneficiary);
         } else {
             _soloVestings[indexTo].grantAmount += amount;
         }
@@ -198,18 +228,28 @@ contract TokenVestingWithRecall is RoleAccess {
         address beneficiary,
         uint256 amount
     ) internal virtual returns (bool) {
+        return
+            _withdrawFrom(vestingSchedID_, _msgSender(), beneficiary, amount);
+    }
+
+    function _withdrawFrom(
+        uint256 vestingSchedID_,
+        address from,
+        address receipient,
+        uint256 amount
+    ) internal virtual returns (bool) {
         require(
             _vestingScheds[vestingSchedID_].vestingTime > 0,
             "Vesting does not exist"
         );
-        require(beneficiary != address(0), "Can not withdraw to null address");
+        require(receipient != address(0), "Can not withdraw to null address");
         require(amount > 0, "Withdraw amount should be non-zero");
         require(
             block.timestamp > _vestingScheds[vestingSchedID_].vestingTime,
             "Can not withdraw before vesting starts"
         );
 
-        bytes32 index = keccak256(abi.encode(vestingSchedID_, _msgSender()));
+        bytes32 index = keccak256(abi.encode(vestingSchedID_, from));
         SoloVesting memory soloVesting_ = _soloVestings[index];
         uint256 netAmount = soloVesting_.grantAmount -
             soloVesting_.withdrawAmount;
@@ -218,11 +258,34 @@ contract TokenVestingWithRecall is RoleAccess {
         _vestingScheds[vestingSchedID_].withdrawAmount += amount;
 
         // send the toke
-        emit Withdraw(vestingSchedID_, _msgSender(), beneficiary, amount);
-        bool result = IERC20(token).transfer(beneficiary, amount);
+        emit Withdraw(vestingSchedID_, from, receipient, amount);
+        bool result = IERC20(token).transfer(receipient, amount);
         require(result, "Withdrawal failed with token transfer");
 
         return true;
+    }
+
+    /// @notice Recall all vesting tokens into recipient's address
+    /// @param vestingSchedID_ The ID of the vesting schedule to recall token from.
+    /// @param from The address that will be used to recall the tokens.
+    /// @param recipient The address that will receive the recalled tokens.
+    function recallVesting(
+        uint256 vestingSchedID_,
+        address from,
+        address recipient
+    ) external onlyAdmin {
+        bytes32 index = keccak256(abi.encode(vestingSchedID_, from));
+        require(
+            _soloVestings[index].beneficiary != address(0),
+            "Vesting does not exist"
+        );
+        uint256 netAmount = _soloVestings[index].grantAmount -
+            _soloVestings[index].withdrawAmount;
+        require(netAmount > 0, "Recall amount should be non-zero");
+
+        _withdrawFrom(vestingSchedID_, from, recipient, netAmount);
+
+        emit Recall(vestingSchedID_, from, recipient, netAmount);
     }
 
     /// @notice Allow the spender to transfer up to certain amount of token from owner's vesting
