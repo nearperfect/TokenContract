@@ -255,8 +255,8 @@ contract("TokenVestingWithRecall", function () {
       expect(bobVestings[1].grantAmount).to.equal(4000);
       expect(bobVestings[1].withdrawAmount).to.equal(0);
 
-      // recall vesting from bob
-      await tokenVesting.recallVesting(0, bob.address, bob.address);
+      await expect(tokenVesting.recallVesting(0, bob.address, bob.address))
+        .to.emit(tokenVesting, "Recall").withArgs(0, bob.address, bob.address, 2000);
 
       // check xtoken balance of the contract
       balance = await xToken.balanceOf(tokenVesting.address);
@@ -296,21 +296,25 @@ contract("TokenVestingWithRecall", function () {
       // 1000000000 - 20000 = 999980000 as alice fund the vesting contract
       expect(balanceBefore).to.equal(999980000);
 
+      // bob withdraw 1500 from sched 1
+      await tokenVesting.connect(bob).withdraw(1, 1500);
+
       // recall revert because of privilege
       await expectRevert(
-        tokenVesting.connect(darwin).recallVesting(0, bob.address, bob.address),
+        tokenVesting.connect(darwin).recallVesting(1, bob.address, bob.address),
         "Caller is not a admin"
       );
-      // recall vesting sched 1 from bob to alice
-      await tokenVesting.recallVesting(1, bob.address, alice.address);
+      // recall the rest of vesting sched 1 from bob to alice
+      await expect(tokenVesting.recallVesting(1, bob.address, alice.address))
+        .to.emit(tokenVesting, "Recall").withArgs(1, bob.address, alice.address, 2500);
 
       // check xtoken balance of the contract
       balance = await xToken.balanceOf(tokenVesting.address);
-      // 20000 - 2000 - 4000 = 14000
+      // 20000 - 2000 - 1500 - 2500 = 14000
       expect(balance).to.equal(14000);
       // check xtoken balance of alice
       balanceAfter = await xToken.balanceOf(alice.address);
-      expect(balanceAfter).to.equal(999984000);
+      expect(balanceAfter).to.equal(999982500);
       // check solo vestings of bob
       bobVestings = await tokenVesting.allSoloVestings(bob.address);
       expect(bobVestings[0].vestingID).to.equal(0);
