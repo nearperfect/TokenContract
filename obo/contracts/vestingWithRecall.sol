@@ -208,7 +208,7 @@ contract TokenVestingWithRecall is RoleAccess {
         uint256 vestingSchedID_,
         uint256 amount
     ) external returns (bool) {
-        return _withdraw(vestingSchedID_, _msgSender(), amount);
+        return _withdrawTo(vestingSchedID_, amount, _msgSender());
     }
 
     /// @notice Withdraw granted tokens into beneficiary's address
@@ -220,19 +220,22 @@ contract TokenVestingWithRecall is RoleAccess {
         uint256 amount,
         address beneficiary
     ) external returns (bool) {
-        return _withdraw(vestingSchedID_, beneficiary, amount);
+        return _withdrawTo(vestingSchedID_, amount, beneficiary);
+    }
+
+    function _withdrawTo(
+        uint256 vestingSchedID_,
+        uint256 amount,
+        address beneficiary
+    ) internal returns (bool) {
+        require(
+            block.timestamp > _vestingScheds[vestingSchedID_].vestingTime,
+            "Can not withdraw before vesting starts"
+        );
+        return _withdraw(vestingSchedID_, _msgSender(), beneficiary, amount);
     }
 
     function _withdraw(
-        uint256 vestingSchedID_,
-        address beneficiary,
-        uint256 amount
-    ) internal virtual returns (bool) {
-        return
-            _withdrawFrom(vestingSchedID_, _msgSender(), beneficiary, amount);
-    }
-
-    function _withdrawFrom(
         uint256 vestingSchedID_,
         address from,
         address receipient,
@@ -244,10 +247,6 @@ contract TokenVestingWithRecall is RoleAccess {
         );
         require(receipient != address(0), "Can not withdraw to null address");
         require(amount > 0, "Withdraw amount should be non-zero");
-        require(
-            block.timestamp > _vestingScheds[vestingSchedID_].vestingTime,
-            "Can not withdraw before vesting starts"
-        );
 
         bytes32 index = keccak256(abi.encode(vestingSchedID_, from));
         SoloVesting memory soloVesting_ = _soloVestings[index];
@@ -283,7 +282,7 @@ contract TokenVestingWithRecall is RoleAccess {
             _soloVestings[index].withdrawAmount;
         require(netAmount > 0, "Recall amount should be non-zero");
 
-        _withdrawFrom(vestingSchedID_, from, recipient, netAmount);
+        _withdraw(vestingSchedID_, from, recipient, netAmount);
 
         emit Recall(vestingSchedID_, from, recipient, netAmount);
     }
