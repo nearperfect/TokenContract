@@ -16,6 +16,7 @@ contract TokenVestingWithRecall is RoleAccess {
         uint256 vestingTime;
         uint256 grantAmount;
         uint256 withdrawAmount;
+        uint256 recallAmount;
     }
 
     struct SoloVesting {
@@ -23,6 +24,7 @@ contract TokenVestingWithRecall is RoleAccess {
         address beneficiary;
         uint256 grantAmount;
         uint256 withdrawAmount;
+        uint256 recallAmount;
     }
 
     event Funding(address indexed funding);
@@ -82,9 +84,7 @@ contract TokenVestingWithRecall is RoleAccess {
         _setupRole(GRANTER_ROLE, _msgSender());
     }
 
-    function soloVestingsLength(
-        uint256 sched
-    ) public view returns (uint256) {
+    function soloVestingsLength(uint256 sched) public view returns (uint256) {
         return _soloVestingKeys[sched].length;
     }
 
@@ -119,7 +119,7 @@ contract TokenVestingWithRecall is RoleAccess {
         uint256 vestingTime
     ) external onlyAdmin returns (uint256) {
         uint256 id = vestingSchedID.current();
-        _vestingScheds[id] = VestingSched(id, name, vestingTime, 0, 0);
+        _vestingScheds[id] = VestingSched(id, name, vestingTime, 0, 0, 0);
         vestingSchedID.increment();
 
         emit Vesting(id, name, vestingTime);
@@ -154,6 +154,7 @@ contract TokenVestingWithRecall is RoleAccess {
                 vestingSchedID_,
                 beneficiary,
                 amount,
+                0,
                 0
             );
             _soloVestingKeys[vestingSchedID_].push(beneficiary);
@@ -235,6 +236,14 @@ contract TokenVestingWithRecall is RoleAccess {
         return _withdraw(vestingSchedID_, _msgSender(), beneficiary, amount);
     }
 
+    function _netAmount(bytes32 index) internal view returns (uint256) {
+        SoloVesting memory soloVesting_ = _soloVestings[index];
+        return
+            soloVesting_.grantAmount -
+            soloVesting_.withdrawAmount -
+            soloVesting_.recallAmount;
+    }
+
     function _withdraw(
         uint256 vestingSchedID_,
         address from,
@@ -249,9 +258,7 @@ contract TokenVestingWithRecall is RoleAccess {
         require(amount > 0, "Withdraw amount should be non-zero");
 
         bytes32 index = keccak256(abi.encode(vestingSchedID_, from));
-        SoloVesting memory soloVesting_ = _soloVestings[index];
-        uint256 netAmount = soloVesting_.grantAmount -
-            soloVesting_.withdrawAmount;
+        uint256 netAmount = _netAmount(index);
         require(netAmount >= amount, "Not sufficient fund for withdrawal");
         _soloVestings[index].withdrawAmount += amount;
         _vestingScheds[vestingSchedID_].withdrawAmount += amount;
@@ -260,6 +267,32 @@ contract TokenVestingWithRecall is RoleAccess {
         emit Withdraw(vestingSchedID_, from, receipient, amount);
         bool result = IERC20(token).transfer(receipient, amount);
         require(result, "Withdrawal failed with token transfer");
+
+        return true;
+    }
+
+    function _recall(
+        uint256 vestingSchedID_,
+        address from,
+        address receipient,
+        uint256 amount
+    ) internal virtual returns (bool) {
+        require(
+            _vestingScheds[vestingSchedID_].vestingTime > 0,
+            "Vesting does not exist"
+        );
+        require(receipient != address(0), "Can not withdraw to null address");
+        require(amount > 0, "Withdraw amount should be non-zero");
+
+        bytes32 index = keccak256(abi.encode(vestingSchedID_, from));
+        uint256 netAmount = _netAmount(index);
+        require(netAmount == amount, "Not sufficient fund for recall");
+        _soloVestings[index].recallAmount += amount;
+        _vestingScheds[vestingSchedID_].recallAmount += amount;
+
+        // send the toke
+        bool result = IERC20(token).transfer(receipient, amount);
+        require(result, "Recall failed with token transfer");
 
         return true;
     }
@@ -278,11 +311,11 @@ contract TokenVestingWithRecall is RoleAccess {
             _soloVestings[index].beneficiary != address(0),
             "Vesting does not exist"
         );
-        uint256 netAmount = _soloVestings[index].grantAmount -
-            _soloVestings[index].withdrawAmount;
+        // recall only happen once, it takes all the remaining grant
+        uint256 netAmount = _netAmount(index);
         require(netAmount > 0, "Recall amount should be non-zero");
 
-        _withdraw(vestingSchedID_, from, recipient, netAmount);
+        _recall(vestingSchedID_, from, recipient, netAmount);
 
         emit Recall(vestingSchedID_, from, recipient, netAmount);
     }
@@ -391,9 +424,7 @@ contract TokenVestingWithRecall is RoleAccess {
         require(amount > 0, "Transfer amount should be non-zero");
 
         bytes32 indexFrom = keccak256(abi.encode(vestingSchedID_, from));
-        SoloVesting memory soloVesting_ = _soloVestings[indexFrom];
-        uint256 netAmount = soloVesting_.grantAmount -
-            soloVesting_.withdrawAmount;
+        uint256 netAmount = _netAmount(indexFrom);
         require(netAmount >= amount, "Not sufficient fund for transfer");
         _soloVestings[indexFrom].grantAmount -= amount;
         _grant(vestingSchedID_, beneficiary, amount);

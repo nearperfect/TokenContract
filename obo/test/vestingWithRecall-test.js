@@ -270,7 +270,8 @@ contract("TokenVestingWithRecall", function () {
       expect(bobVestings[0].vestingID).to.equal(0);
       expect(bobVestings[0].beneficiary).to.equal(bob.address);
       expect(bobVestings[0].grantAmount).to.equal(2000);
-      expect(bobVestings[0].withdrawAmount).to.equal(2000);
+      expect(bobVestings[0].withdrawAmount).to.equal(0);
+      expect(bobVestings[0].recallAmount).to.equal(2000);
       expect(bobVestings[1].vestingID).to.equal(1);
       expect(bobVestings[1].beneficiary).to.equal(bob.address);
       expect(bobVestings[1].grantAmount).to.equal(4000);
@@ -280,7 +281,8 @@ contract("TokenVestingWithRecall", function () {
       // check total sched grant and withdraw
       var vestingSched = await tokenVesting.vestingSched(0);
       expect(vestingSched.grantAmount).to.equal(6000);
-      expect(vestingSched.withdrawAmount).to.equal(2000);
+      expect(vestingSched.withdrawAmount).to.equal(0);
+      expect(vestingSched.recallAmount).to.equal(2000);
       vestingSched1 = await tokenVesting.vestingSched(1);
       expect(vestingSched1.grantAmount).to.equal(14000);
       expect(vestingSched1.withdrawAmount).to.equal(0);
@@ -320,11 +322,13 @@ contract("TokenVestingWithRecall", function () {
       expect(bobVestings[0].vestingID).to.equal(0);
       expect(bobVestings[0].beneficiary).to.equal(bob.address);
       expect(bobVestings[0].grantAmount).to.equal(2000);
-      expect(bobVestings[0].withdrawAmount).to.equal(2000);
+      expect(bobVestings[0].withdrawAmount).to.equal(0);
+      expect(bobVestings[0].recallAmount).to.equal(2000);
       expect(bobVestings[1].vestingID).to.equal(1);
       expect(bobVestings[1].beneficiary).to.equal(bob.address);
       expect(bobVestings[1].grantAmount).to.equal(4000);
-      expect(bobVestings[1].withdrawAmount).to.equal(4000);
+      expect(bobVestings[1].withdrawAmount).to.equal(1500);
+      expect(bobVestings[1].recallAmount).to.equal(2500);
     });
 
     it("multiple scheds and multiple users", async () => {
