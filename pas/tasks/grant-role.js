@@ -4,7 +4,12 @@ task("grant-role", "Grant role to an address")
   .setAction(async (taskArgs) => {
     const operator = web3.utils.toChecksumAddress(taskArgs.address);
     const xtoken = await ethers.getContract("XToken");
-    const role = web3.utils.keccak256(taskArgs.role);
+    var role = ""
+    if (taskArgs.role == "DEFAULT_ADMIN_ROLE") {
+      role = "0x0000000000000000000000000000000000000000000000000000000000000000"
+    } else {
+      role = web3.utils.keccak256(taskArgs.role);
+    }
 
     console.log(`Sending the transaction to xtoken: ${xtoken.address} ...`);
     var tx = await xtoken.grantRole(role, operator);

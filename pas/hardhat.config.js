@@ -10,7 +10,12 @@ require("hardhat-contract-sizer");
 require("solidity-docgen");
 require("hardhat-deploy");
 require("dotenv").config();
-require("./tasks/gran-role");
+require("./tasks/grant-role");
+require("./tasks/revoke-role");
+require("./tasks/show-role");
+require("./tasks/balance")
+require("./tasks/accounts");
+require("./tasks/transfer");
 require("./tasks/mint");
 require("./tasks/increase-cap");
 require("./tasks/check-token");
@@ -42,7 +47,7 @@ module.exports = {
       allowUnlimitedContractSize: true,
     },
     localhost: {
-      url: "http://127.0.0.1:8545",
+      url: "http://127.0.0.1:18545",
       tags: ["localhost"],
     },
     mumbai: {
